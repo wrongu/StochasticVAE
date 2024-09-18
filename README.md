@@ -1,1 +1,1 @@
-Stochastic Variational AutoEnCoder
+Stochastic Variational AutoEncoder
