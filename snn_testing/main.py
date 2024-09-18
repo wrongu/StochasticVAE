@@ -30,6 +30,19 @@ def import_train_data():
 
     return torch.Tensor(X), torch.Tensor(Y)
 
+
+def import_test_data():
+    """
+    This function is used to import the training data.
+    :return: X: X1 and X2 features of the dataset which becomes our input variable for the model.
+    """
+    path = os.getcwd() + '/snn_testing/data/iris_test.dat'
+    data = pd.read_csv(path, header=None, names=['X1', 'X2', 'X3', 'X4'])
+    X = data[['X1', 'X2', 'X3', 'X4']].to_numpy()
+
+    return torch.Tensor(X)
+
+
 def one_hot_encode(Y):
     """
     performing one hot encoding over target variable Y
@@ -81,6 +94,7 @@ def train(snn, x, y):
 
     print("Training complete.")
 
+    # create a computation graph
     make_dot(output, params=dict(list(snn.named_parameters()))).render("computation_graph", format="png")
 
     return snn
@@ -94,7 +108,6 @@ def main():
     snn = StochasticNN(input_dim= INPUT_DIM, z_dim=OUTPUT_DIM)
 
     X, Y = import_train_data()
-    # ground_truth_Y = Y.copy()
     Y = torch.Tensor(one_hot_encode(Y))
 
     snn_trained = train(snn, X, Y)
