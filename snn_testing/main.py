@@ -17,32 +17,18 @@ LR_RATE = 0.01
 INPUT_DIM = 4     
 OUTPUT_DIM = 3
 
-def import_train_data():
+def import_data(path):
     """
     This function is used to import the training data.
     :return: X: X1 and X2 features of the dataset which becomes our input variable for the model.
              Y: Y is our target variable.
     """
-    path = os.getcwd() + '/snn_testing/data/iris_train.dat'
+    path = os.getcwd() + path
     data = pd.read_csv(path, header=None, names=['X1', 'X2', 'X3', 'X4', 'Y'])
     X = data[['X1', 'X2', 'X3', 'X4']].to_numpy()
     Y = np.array(data['Y'])
 
     return torch.Tensor(X), torch.Tensor(Y)
-
-
-def import_test_data():
-    """
-    This function is used to import the training data.
-    :return: X: X1 and X2 features of the dataset which becomes our input variable for the model.
-    """
-    path = os.getcwd() + '/snn_testing/data/iris_test.dat'
-    data = pd.read_csv(path, header=None, names=['X1', 'X2', 'X3', 'X4', 'Y'])
-    X = data[['X1', 'X2', 'X3', 'X4']].to_numpy()
-    Y = np.array(data['Y'])
-
-    return torch.Tensor(X), torch.Tensor(Y)
-
 
 def one_hot_encode(Y):
     """
@@ -125,13 +111,15 @@ def test(snn, X_test, Y_test):
 
 def main():
     snn = StochasticNN(input_dim= INPUT_DIM, z_dim=OUTPUT_DIM)
+    train_data_path = '/snn_testing/data/iris_train.dat'
+    test_data_path = '/snn_testing/data/iris_test.dat'
 
-    X, Y = import_train_data()
+    X, Y = import_data(train_data_path)
     Y = torch.Tensor(one_hot_encode(Y))
 
     snn_trained = train(snn, X, Y)
 
-    X_TEST, Y_TEST = import_test_data()
+    X_TEST, Y_TEST = import_data(test_data_path)
     Y_TEST= torch.Tensor(one_hot_encode(Y_TEST))
 
     test(snn_trained, X_TEST, Y_TEST)
