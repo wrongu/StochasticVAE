@@ -45,21 +45,21 @@ class StochasticNN(nn.Module):
         # Initialize means with a normal distribution and standard deviations with a small positive constant
         # Input layer initialization (weights and biases)
         init.kaiming_normal_(self.weights_mean_ipl, mode='fan_in', nonlinearity='relu')
-        init.constant_(self.weights_logvar_ipl, 0.1)  # small positive std deviation for stochasticity
+        init.constant_(self.weights_logvar_ipl, -4.6)  # small positive std deviation for stochasticity
         init.constant_(self.bias_mean_ipl, 0)      # bias can be initialized to 0 or small value
-        init.constant_(self.bias_logvar_l1_ipl, 0.1)  # small positive std deviation for stochasticity
+        init.constant_(self.bias_logvar_l1_ipl, -4.6)  # small positive std deviation for stochasticity
 
         # Hidden layer 1 initialization (weights and biases)
         init.kaiming_normal_(self.weights_mean_l1, mode='fan_in', nonlinearity='relu')
-        init.constant_(self.weights_logvar_l1, 0.1)  
+        init.constant_(self.weights_logvar_l1, -4.6)  
         init.constant_(self.bias_mean_l1, 0)      
-        init.constant_(self.bias_logvar_l1, 0.1)     
+        init.constant_(self.bias_logvar_l1, -4.6)     
 
         # Output layer initialization (weights and biases)
         init.kaiming_normal_(self.weights_mean_opl, mode='fan_in', nonlinearity='relu')
-        init.constant_(self.weights_logvar_opl, 0.1)  
+        init.constant_(self.weights_logvar_opl, -4.6)  
         init.constant_(self.bias_mean_opl, 0)      
-        init.constant_(self.bias_logvar_opl, 0.1)     
+        init.constant_(self.bias_logvar_opl, -4.6)     
 
 
     def reparameterization_trick(self, mu, logvar):

@@ -11,8 +11,8 @@ import os
 from torch import optim 
 from torchviz import make_dot
 
-EPOCHS = 100
-LR_RATE = 0.01
+EPOCHS = 1000
+LR_RATE = 0.0001
 
 INPUT_DIM = 4     
 OUTPUT_DIM = 3
