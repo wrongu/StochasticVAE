@@ -9,14 +9,15 @@ from vanilla_snn import StochasticNN
 import pandas as pd
 import os
 from torch import optim 
+from torchviz import make_dot
 
 EPOCHS = 100
-LR_RATE = 0.06
+LR_RATE = 0.01
 
 INPUT_DIM = 4     
 OUTPUT_DIM = 3
 
-def import_data():
+def import_train_data():
     """
     This function is used to import the training data.
     :return: X: X1 and X2 features of the dataset which becomes our input variable for the model.
@@ -47,6 +48,13 @@ def one_hot_encode(Y):
 
 
 def train(snn, x, y):
+    """
+    This is the train method to train the model and returns it.
+    :param snn: SNN model
+            x : input data
+            y : target variables
+    :return: one hot encoded Y
+    """
     # Define loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()  # since this is a classification problem
     optimizer = optim.Adam(snn.parameters(), lr=LR_RATE)
@@ -73,6 +81,10 @@ def train(snn, x, y):
 
     print("Training complete.")
 
+    make_dot(output, params=dict(list(snn.named_parameters()))).render("computation_graph", format="png")
+
+    return snn
+
 
 def test():
     pass
@@ -81,11 +93,12 @@ def test():
 def main():
     snn = StochasticNN(input_dim= INPUT_DIM, z_dim=OUTPUT_DIM)
 
-    X, Y = import_data()
+    X, Y = import_train_data()
     # ground_truth_Y = Y.copy()
     Y = torch.Tensor(one_hot_encode(Y))
 
-    train(snn, X, Y)
+    snn_trained = train(snn, X, Y)
+    test(snn_trained)
 
     
 
