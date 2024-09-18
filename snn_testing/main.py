@@ -37,10 +37,11 @@ def import_test_data():
     :return: X: X1 and X2 features of the dataset which becomes our input variable for the model.
     """
     path = os.getcwd() + '/snn_testing/data/iris_test.dat'
-    data = pd.read_csv(path, header=None, names=['X1', 'X2', 'X3', 'X4'])
+    data = pd.read_csv(path, header=None, names=['X1', 'X2', 'X3', 'X4', 'Y'])
     X = data[['X1', 'X2', 'X3', 'X4']].to_numpy()
+    Y = np.array(data['Y'])
 
-    return torch.Tensor(X)
+    return torch.Tensor(X), torch.Tensor(Y)
 
 
 def one_hot_encode(Y):
@@ -100,8 +101,23 @@ def train(snn, x, y):
     return snn
 
 
-def test():
-    pass
+def test(snn, X_test, Y_test):
+    snn.eval()
+
+    # Forward pass: compute predictions
+    with torch.no_grad():  # No need to calculate gradients during testing
+        predictions = snn(X_test.T)
+
+    # Convert predictions to class labels (taking the index of the max probability)
+    predicted_labels = torch.argmax(predictions.T, dim=1)
+    true_labels = torch.argmax(Y_test, dim=1)
+
+    # Calculate accuracy
+    correct_predictions = torch.sum(predicted_labels == true_labels).item()
+    accuracy = correct_predictions / len(true_labels)
+
+    print(f'Test Accuracy: {accuracy * 100:.2f}%')
+
 
 
 def main():
@@ -111,7 +127,11 @@ def main():
     Y = torch.Tensor(one_hot_encode(Y))
 
     snn_trained = train(snn, X, Y)
-    test(snn_trained)
+
+    X_TEST, Y_TEST = import_test_data()
+    Y_TEST= torch.Tensor(one_hot_encode(Y_TEST))
+
+    test(snn_trained, X_TEST, Y_TEST)
 
     
 
