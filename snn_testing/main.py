@@ -95,7 +95,7 @@ def train(snn, x, y):
     print("Training complete.")
 
     # create a computation graph
-    make_dot(output, params=dict(list(snn.named_parameters()))).render("computation_graph", format="png")
+    make_dot(output, params=dict(list(snn.named_parameters()))).render("snn_testing/computation_graph", format="png")
 
     return snn
 
