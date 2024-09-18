@@ -77,6 +77,7 @@ def train(snn, x, y):
 def test():
     pass
 
+
 def main():
     snn = StochasticNN(input_dim= INPUT_DIM, z_dim=OUTPUT_DIM)
 
