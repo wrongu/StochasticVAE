@@ -84,10 +84,10 @@ def train(snn, x, y):
         # Compute loss
         loss = loss_fn(output.T, y)
         
-        # Backpropagation
+        # Backprop
         loss.backward()
 
-        # Optimize weights
+        # batch gradient descent
         optimizer.step()
 
         if epoch % 10 == 0:
@@ -102,9 +102,12 @@ def train(snn, x, y):
 
 
 def test(snn, X_test, Y_test):
+    """
+    Model testing on test dataset.
+    """
     snn.eval()
 
-    # Forward pass: compute predictions
+    
     with torch.no_grad():  # No need to calculate gradients during testing
         predictions = snn(X_test.T)
 
