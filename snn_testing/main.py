@@ -11,7 +11,7 @@ import os
 from torch import optim 
 
 EPOCHS = 100
-LR_RATE = 0.01
+LR_RATE = 0.06
 
 INPUT_DIM = 4     
 OUTPUT_DIM = 3
