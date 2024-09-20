@@ -5,11 +5,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torchvision
 import mlflow
+import mlflow.pytorch
 from vanilla_snn import StochasticNN
 import pandas as pd
 import os
 from torch import optim 
 from torchviz import make_dot
+
+mlflow.set_experiment("Vanilla SNN Experiment")
 
 EPOCHS = 1000
 LR_RATE = 0.0001
@@ -59,6 +62,9 @@ def train(snn, x, y):
     loss_fn = nn.CrossEntropyLoss()  # since this is a classification problem
     optimizer = optim.Adam(snn.parameters(), lr=LR_RATE)
 
+    mlflow.log_param("Learning Rate", LR_RATE)
+    mlflow.log_param("Epochs", EPOCHS)
+
     snn.train()  # put the model in training mode
 
     for epoch in range(EPOCHS):
@@ -78,8 +84,15 @@ def train(snn, x, y):
 
         if epoch % 10 == 0:
             print(f'Epoch {epoch}, Loss: {loss.item()}')
+            mlflow.log_metric("Loss", loss.item(), step=epoch)
+
+            for name, param in snn.named_parameters():
+                mlflow.log_metric(f'{name}_mean', param.mean().item(), step=epoch)
+                mlflow.log_metric(f'{name}_std', param.std().item(), step=epoch)
 
     print("Training complete.")
+
+    mlflow.pytorch.log_model(snn, "SNN Model")
 
     # create a computation graph
     make_dot(output, params=dict(list(snn.named_parameters()))).render("snn_testing/computation_graph", format="png")
