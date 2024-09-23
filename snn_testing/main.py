@@ -58,45 +58,45 @@ def train(snn, x, y, run_name):
             y : target variables
     :return: one hot encoded Y
     """
-    with mlflow.start_run(run_name=run_name) as run:
-        # Define loss function and optimizer
-        loss_fn = nn.CrossEntropyLoss()  # since this is a classification problem
-        optimizer = optim.Adam(snn.parameters(), lr=LR_RATE)
 
-        mlflow.log_param("Learning Rate", LR_RATE)
-        mlflow.log_param("Epochs", EPOCHS)
+    # Define loss function and optimizer
+    loss_fn = nn.CrossEntropyLoss()  # since this is a classification problem
+    optimizer = optim.Adam(snn.parameters(), lr=LR_RATE)
 
-        snn.train()  # put the model in training mode
+    mlflow.log_param("Learning Rate", LR_RATE)
+    mlflow.log_param("Epochs", EPOCHS)
 
-        for epoch in range(EPOCHS):
-            optimizer.zero_grad()  # zero the gradients from the last iteration
+    snn.train()  # put the model in training mode
 
-            # Reparameterize weights and biases
-            output = snn(x.T)  # forward pass
+    for epoch in range(EPOCHS):
+        optimizer.zero_grad()  # zero the gradients from the last iteration
 
-            # Compute loss
-            loss = loss_fn(output.T, y)
-            
-            # Backprop
-            loss.backward()
+        # Reparameterize weights and biases
+        output = snn(x.T)  # forward pass
 
-            # batch gradient descent
-            optimizer.step()
+        # Compute loss
+        loss = loss_fn(output.T, y)
+        
+        # Backprop
+        loss.backward()
 
-            if epoch % 10 == 0:
-                print(f'Epoch {epoch}, Loss: {loss.item()}')
-                mlflow.log_metric("Loss", loss.item(), step=epoch)
+        # batch gradient descent
+        optimizer.step()
 
-                for name, param in snn.named_parameters():
-                    mlflow.log_metric(f'{name}_mean', param.mean().item(), step=epoch)
-                    mlflow.log_metric(f'{name}_std', param.std().item(), step=epoch)
+        if epoch % 10 == 0:
+            print(f'Epoch {epoch}, Loss: {loss.item()}')
+            mlflow.log_metric("Loss", loss.item(), step=epoch)
 
-        print("Training complete.")
+            for name, param in snn.named_parameters():
+                mlflow.log_metric(f'{name}_mean', param.mean().item(), step=epoch)
+                mlflow.log_metric(f'{name}_std', param.std().item(), step=epoch)
 
-        mlflow.pytorch.log_model(snn, "SNN Model")
+    print("Training complete.")
 
-        # create a computation graph
-        # make_dot(output, params=dict(list(snn.named_parameters()))).render("snn_testing/computation_graph", format="png")
+    mlflow.pytorch.log_model(snn, "SNN Model")
+
+    # create a computation graph
+    # make_dot(output, params=dict(list(snn.named_parameters()))).render("snn_testing/computation_graph", format="png")
 
     return snn
 
@@ -121,7 +121,7 @@ def test(snn, X_test, Y_test):
 
     print(f'Test Accuracy: {accuracy * 100:.2f}%')
 
-    # mlflow.log_metric("Accuracy", accuracy)
+    mlflow.log_metric("Accuracy", accuracy)
 
 
 
@@ -130,17 +130,19 @@ def main():
     train_data_path = '/snn_testing/data/iris_train.dat'
     test_data_path = '/snn_testing/data/iris_test.dat'
 
-    run_name = 'STD= ' + str(snn.user_input_logvar) + ' EPOCHS= ' + str(EPOCHS) + ' LR_RATE= ' + str(LR_RATE)
+    run_name = 'LOG_VAR= ' + str(snn.user_input_logvar) + ' EPOCHS= ' + str(EPOCHS) + ' LR_RATE= ' + str(LR_RATE)
 
-    X, Y = import_data(train_data_path)
-    Y = torch.Tensor(one_hot_encode(Y))
+    with mlflow.start_run(run_name=run_name) as run:
 
-    snn_trained = train(snn, X, Y, run_name)
+        X, Y = import_data(train_data_path)
+        Y = torch.Tensor(one_hot_encode(Y))
 
-    X_TEST, Y_TEST = import_data(test_data_path)
-    Y_TEST= torch.Tensor(one_hot_encode(Y_TEST))
+        snn_trained = train(snn, X, Y, run_name)
 
-    test(snn_trained, X_TEST, Y_TEST)
+        X_TEST, Y_TEST = import_data(test_data_path)
+        Y_TEST= torch.Tensor(one_hot_encode(Y_TEST))
+
+        test(snn_trained, X_TEST, Y_TEST)
 
     
 
