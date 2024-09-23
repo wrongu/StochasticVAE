@@ -15,7 +15,7 @@ from torchviz import make_dot
 mlflow.set_experiment("Vanilla SNN Experiment")
 
 EPOCHS = 10000
-LR_RATE = 0.00001
+LR_RATE = 0.001
 
 INPUT_DIM = 4     
 OUTPUT_DIM = 3
@@ -121,6 +121,8 @@ def test(snn, X_test, Y_test):
 
     print(f'Test Accuracy: {accuracy * 100:.2f}%')
 
+    # mlflow.log_metric("Accuracy", accuracy)
+
 
 
 def main():
@@ -128,7 +130,7 @@ def main():
     train_data_path = '/snn_testing/data/iris_train.dat'
     test_data_path = '/snn_testing/data/iris_test.dat'
 
-    run_name = 'STD= ' + str(snn.user_input_std) + ' EPOCHS= ' + str(EPOCHS) + ' LR_RATE= ' + str(LR_RATE)
+    run_name = 'STD= ' + str(snn.user_input_logvar) + ' EPOCHS= ' + str(EPOCHS) + ' LR_RATE= ' + str(LR_RATE)
 
     X, Y = import_data(train_data_path)
     Y = torch.Tensor(one_hot_encode(Y))

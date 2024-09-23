@@ -17,7 +17,7 @@ class StochasticNN(nn.Module):
         Stochastic Neural network for Iris data from data directory with 4 input features
         used for classification for 3 labels. 
         """
-        self.user_input_logvar = -2.5
+        self.user_input_logvar = -6
         # 4 -> 20 -> 20 -> 3
 
         # input layer
