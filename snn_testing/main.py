@@ -14,8 +14,8 @@ from torchviz import make_dot
 
 mlflow.set_experiment("Vanilla SNN Experiment")
 
-EPOCHS = 1000
-LR_RATE = 0.0001
+EPOCHS = 10000
+LR_RATE = 0.00001
 
 INPUT_DIM = 4     
 OUTPUT_DIM = 3
@@ -50,7 +50,7 @@ def one_hot_encode(Y):
     return new_y
 
 
-def train(snn, x, y):
+def train(snn, x, y, run_name):
     """
     This is the train method to train the model and returns it.
     :param snn: SNN model
@@ -58,44 +58,45 @@ def train(snn, x, y):
             y : target variables
     :return: one hot encoded Y
     """
-    # Define loss function and optimizer
-    loss_fn = nn.CrossEntropyLoss()  # since this is a classification problem
-    optimizer = optim.Adam(snn.parameters(), lr=LR_RATE)
+    with mlflow.start_run(run_name=run_name) as run:
+        # Define loss function and optimizer
+        loss_fn = nn.CrossEntropyLoss()  # since this is a classification problem
+        optimizer = optim.Adam(snn.parameters(), lr=LR_RATE)
 
-    mlflow.log_param("Learning Rate", LR_RATE)
-    mlflow.log_param("Epochs", EPOCHS)
+        mlflow.log_param("Learning Rate", LR_RATE)
+        mlflow.log_param("Epochs", EPOCHS)
 
-    snn.train()  # put the model in training mode
+        snn.train()  # put the model in training mode
 
-    for epoch in range(EPOCHS):
-        optimizer.zero_grad()  # zero the gradients from the last iteration
+        for epoch in range(EPOCHS):
+            optimizer.zero_grad()  # zero the gradients from the last iteration
 
-        # Reparameterize weights and biases
-        output = snn(x.T)  # forward pass
+            # Reparameterize weights and biases
+            output = snn(x.T)  # forward pass
 
-        # Compute loss
-        loss = loss_fn(output.T, y)
-        
-        # Backprop
-        loss.backward()
+            # Compute loss
+            loss = loss_fn(output.T, y)
+            
+            # Backprop
+            loss.backward()
 
-        # batch gradient descent
-        optimizer.step()
+            # batch gradient descent
+            optimizer.step()
 
-        if epoch % 10 == 0:
-            print(f'Epoch {epoch}, Loss: {loss.item()}')
-            mlflow.log_metric("Loss", loss.item(), step=epoch)
+            if epoch % 10 == 0:
+                print(f'Epoch {epoch}, Loss: {loss.item()}')
+                mlflow.log_metric("Loss", loss.item(), step=epoch)
 
-            for name, param in snn.named_parameters():
-                mlflow.log_metric(f'{name}_mean', param.mean().item(), step=epoch)
-                mlflow.log_metric(f'{name}_std', param.std().item(), step=epoch)
+                for name, param in snn.named_parameters():
+                    mlflow.log_metric(f'{name}_mean', param.mean().item(), step=epoch)
+                    mlflow.log_metric(f'{name}_std', param.std().item(), step=epoch)
 
-    print("Training complete.")
+        print("Training complete.")
 
-    mlflow.pytorch.log_model(snn, "SNN Model")
+        mlflow.pytorch.log_model(snn, "SNN Model")
 
-    # create a computation graph
-    make_dot(output, params=dict(list(snn.named_parameters()))).render("snn_testing/computation_graph", format="png")
+        # create a computation graph
+        # make_dot(output, params=dict(list(snn.named_parameters()))).render("snn_testing/computation_graph", format="png")
 
     return snn
 
@@ -127,10 +128,12 @@ def main():
     train_data_path = '/snn_testing/data/iris_train.dat'
     test_data_path = '/snn_testing/data/iris_test.dat'
 
+    run_name = 'STD= ' + str(snn.user_input_std) + ' EPOCHS= ' + str(EPOCHS) + ' LR_RATE= ' + str(LR_RATE)
+
     X, Y = import_data(train_data_path)
     Y = torch.Tensor(one_hot_encode(Y))
 
-    snn_trained = train(snn, X, Y)
+    snn_trained = train(snn, X, Y, run_name)
 
     X_TEST, Y_TEST = import_data(test_data_path)
     Y_TEST= torch.Tensor(one_hot_encode(Y_TEST))
