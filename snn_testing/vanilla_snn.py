@@ -17,7 +17,7 @@ class StochasticNN(nn.Module):
         Stochastic Neural network for Iris data from data directory with 4 input features
         used for classification for 3 labels. 
         """
-        self.user_input_std = -2.5
+        self.user_input_logvar = -2.5
         # 4 -> 20 -> 20 -> 3
 
         # input layer
@@ -45,21 +45,21 @@ class StochasticNN(nn.Module):
         # Initialize means with a normal distribution and standard deviations with a small positive constant
         # Input layer initialization (weights and biases)
         init.kaiming_normal_(self.weights_mean_ipl, mode='fan_in', nonlinearity='relu')
-        init.constant_(self.weights_logvar_ipl,self.user_input_std)  # small positive std deviation for stochasticity
+        init.constant_(self.weights_logvar_ipl,self.user_input_logvar)  # small positive std deviation for stochasticity
         init.constant_(self.bias_mean_ipl, 0)      # bias can be initialized to 0 or small value
-        init.constant_(self.bias_logvar_l1_ipl, self.user_input_std)  # small positive std deviation for stochasticity
+        init.constant_(self.bias_logvar_l1_ipl, self.user_input_logvar)  # small positive std deviation for stochasticity
 
         # Hidden layer 1 initialization (weights and biases)
         init.kaiming_normal_(self.weights_mean_l1, mode='fan_in', nonlinearity='relu')
-        init.constant_(self.weights_logvar_l1, self.user_input_std)  
+        init.constant_(self.weights_logvar_l1, self.user_input_logvar)  
         init.constant_(self.bias_mean_l1, 0)      
-        init.constant_(self.bias_logvar_l1, self.user_input_std)     
+        init.constant_(self.bias_logvar_l1, self.user_input_logvar)     
 
         # Output layer initialization (weights and biases)
         init.kaiming_normal_(self.weights_mean_opl, mode='fan_in', nonlinearity='relu')
-        init.constant_(self.weights_logvar_opl, self.user_input_std)  
+        init.constant_(self.weights_logvar_opl, self.user_input_logvar)  
         init.constant_(self.bias_mean_opl, 0)      
-        init.constant_(self.bias_logvar_opl, self.user_input_std)     
+        init.constant_(self.bias_logvar_opl, self.user_input_logvar)     
 
 
     def reparameterization_trick(self, mu, logvar):
