@@ -17,7 +17,7 @@ class StochasticNN(nn.Module):
         Stochastic Neural network for Iris data from data directory with 4 input features
         used for classification for 3 labels. 
         """
-        self.user_input_logvar = -6
+        self.user_input_logvar = -2.5
         # 4 -> 20 -> 20 -> 3
 
         # input layer
@@ -89,6 +89,6 @@ class StochasticNN(nn.Module):
         weights_opl = self.reparameterization_trick(self.weights_mean_opl, self.weights_logvar_opl)
         bias_opl = self.reparameterization_trick(self.bias_mean_opl, self.bias_logvar_opl)
         x = torch.matmul(weights_opl, x) + bias_opl.unsqueeze(dim=1)
-        x = torch.softmax(x, dim=-1)
+        # x = torch.softmax(x, dim=-1)
 
         return x

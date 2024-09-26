@@ -12,7 +12,7 @@ import os
 from torch import optim 
 from torchviz import make_dot
 
-mlflow.set_experiment("Vanilla SNN Experiment")
+mlflow.set_experiment("SNN")
 
 EPOCHS = 10000
 LR_RATE = 0.001
@@ -61,7 +61,7 @@ def train(snn, x, y, run_name):
 
     # Define loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()  # since this is a classification problem
-    optimizer = optim.Adam(snn.parameters(), lr=LR_RATE)
+    optimizer = optim.Adam(snn.parameters(), lr=LR_RATE, betas=(0.95, 0.999))
 
     mlflow.log_param("Learning Rate", LR_RATE)
     mlflow.log_param("Epochs", EPOCHS)
@@ -131,7 +131,6 @@ def main():
     test_data_path = '/snn_testing/data/iris_test.dat'
 
     run_name = 'LOG_VAR= ' + str(snn.user_input_logvar) + ' EPOCHS= ' + str(EPOCHS) + ' LR_RATE= ' + str(LR_RATE)
-
     with mlflow.start_run(run_name=run_name) as run:
 
         X, Y = import_data(train_data_path)
