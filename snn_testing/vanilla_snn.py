@@ -10,14 +10,14 @@ import os
 
 class StochasticNN(nn.Module):
 
-    def __init__(self, input_dim, z_dim):
+    def __init__(self, input_dim, z_dim, user_input_logvar = -2.5):
         super(StochasticNN, self).__init__()
 
         """
         Stochastic Neural network for Iris data from data directory with 4 input features
         used for classification for 3 labels. 
         """
-        self.user_input_logvar = -2.5
+        self.user_input_logvar = user_input_logvar
         # 4 -> 20 -> 20 -> 3
 
         # input layer
