@@ -41,12 +41,13 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
             total_loss += loss.item()
 
             for name, param in model.named_parameters():
-                if 'weight' in name:
-                    mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
-                    mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
-                if 'bias' in name:
-                    mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
-                    mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
+                if 'encoder' in name:
+                    if 'weight' in name:
+                        mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
+                        mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
+                    if 'bias' in name:
+                        mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
+                        mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
 
         mlflow.log_metric("Loss", total_loss, step=epoch)
 
