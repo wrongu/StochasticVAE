@@ -46,7 +46,7 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
             total_loss += loss.item()
 
             mlflow.log_metric("KL Divergence term", kl_term, step=steps)
-            mlflow.log_metric("Reconstruction loss", reconstruction_loss, step=steps)
+            mlflow.log_metric("Reconstruction log likelihood", reconstruction_loss, step=steps)
 
             for name, param in model.named_parameters():
                 if 'encoder' in name:
@@ -57,7 +57,7 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
                         mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
                         mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
 
-        mlflow.log_metric("ELBO Loss", total_loss, step=epoch)
+        mlflow.log_metric("ELBO", -total_loss, step=epoch)
 
     return model
 
