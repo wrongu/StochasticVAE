@@ -17,8 +17,6 @@ class VAE(nn.Module):
         """Sample from the approximate posterior using the reparameterization trick."""
 
         std = torch.exp(0.5 * logvar_z)
-
-        # TODO - multiple samples
         eps = torch.randn_like(std)
 
         z = mu_z + eps * std
@@ -41,4 +39,19 @@ class VAE(nn.Module):
         # elbo = reconstruction_term - kl_term
         loss = self.beta * kl_term - reconstruction_term
 
-        return loss.sum(), x_recon
+        return loss.sum(), x_recon, kl_term, reconstruction_term
+    
+
+    def get_encoder_num_layers(self):
+        num_layers = 0
+        for name, param in self.encoder.named_parameters():
+            if 'weight' in name:
+                num_layers += 1
+
+        return num_layers
+
+
+    def get_encoder_layer_width(self):
+        pass
+
+

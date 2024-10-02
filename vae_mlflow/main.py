@@ -22,8 +22,13 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
     model.train()
     losses = []
     steps = 0
+    encoder_num_layers = model.get_encoder_num_layers()
+
     mlflow.log_param("Learning Rate", LR_RATE)
     mlflow.log_param("Epochs", NUM_EPOCHS)
+    mlflow.log_param("Batch Size", BATCH_SIZE)
+    mlflow.log_param("Latent Space size", LATENT_DIM)
+    mlflow.log_param("Number of layers", encoder_num_layers)
 
     for epoch in tqdm(range(num_epochs), desc='Epochs'):
         total_loss = 0
@@ -33,12 +38,15 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
             data = data.view(-1, 784).to(device)
 
             optimizer.zero_grad()
-            loss, _ = model.loss(data)
+            loss, _, kl_term, reconstruction_loss = model.loss(data)
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
 
             total_loss += loss.item()
+
+            mlflow.log_metric("KL Divergence term", kl_term, step=steps)
+            mlflow.log_metric("Reconstruction loss", reconstruction_loss, step=steps)
 
             for name, param in model.named_parameters():
                 if 'encoder' in name:
@@ -49,15 +57,7 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
                         mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
                         mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
 
-        mlflow.log_metric("Loss", total_loss, step=epoch)
-
-    plt.figure()
-    plt.title('IWAE Loss Graph')
-    plt.xlabel('steps')
-    plt.ylabel('loss')
-    plt.plot(range(steps), losses, color = 'blue')
-    plt.show()
-    plt.close()
+        mlflow.log_metric("ELBO Loss", total_loss, step=epoch)
 
     return model
 
