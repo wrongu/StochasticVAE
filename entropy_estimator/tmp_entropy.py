@@ -54,7 +54,9 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     torch.manual_seed(2492497)
-    p1 = MultivariateNormal(torch.zeros(2), torch.eye(2))
+    
+    # multivariate distribution with mean 0 [2x2], covariance identity matrix [2x2] 
+    p1 = MultivariateNormal(torch.zeros(2), torch.eye(2))  
     p2 = MixtureSameFamily(
         Categorical(torch.tensor([0.5, 0.5, 0.5, 0.5])),
         MultivariateNormal(torch.randn(4, 2), torch.stack([torch.eye(2)]*4, dim=0)),
