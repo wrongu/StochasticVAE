@@ -83,4 +83,4 @@ if __name__ == "__main__":
         ax[i].legend()
     fig.tight_layout()
 
-    plt.show()
+    plt.savefig('entropy_estimator/Entropy Plot')
