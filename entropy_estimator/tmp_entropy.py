@@ -21,7 +21,7 @@ def kth_nearest_neighbor_dist(x, k=1):
     # xxT = x @ x.t()
     xxT = torch.einsum("i...,j...->ij", x, x)
     sq_pair_dist = torch.diagonal(xxT, 0)[:, None] + torch.diagonal(xxT, 0)[None, :] - 2 * xxT
-    return torch.kthvalue(sq_pair_dist, k + 1, dim=1).values ** 0.5
+    return torch.kthvalue(sq_pair_dist, k+1, dim=1).values ** 0.5
 
 
 def entropy_singh_2003(p: Distribution, n: int, k: int):
@@ -47,13 +47,16 @@ def do_entropy_compare(p: Distribution, ns, ks):
                 h_singh[j][i] = np.nan, np.nan
             else:
                 h_singh[j][i] = entropy_singh_2003(p, n, k)
+                print("n: " + str(n)+ " k: " + str(k) + str(h_singh[j][i]))
+                print()
+
     return h_mc, h_singh
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    torch.manual_seed(2492497)
+    torch.manual_seed(0)
     
     # multivariate distribution with mean 0 [2x2], covariance identity matrix [2x2] 
     p1 = MultivariateNormal(torch.zeros(2), torch.eye(2))  
@@ -62,8 +65,8 @@ if __name__ == "__main__":
         MultivariateNormal(torch.randn(4, 2), torch.stack([torch.eye(2)]*4, dim=0)),
     )
 
-    ns = np.logspace(0, 4, 10).astype(int)
-    ks = np.arange(1, 8)
+    ns = np.logspace(0, 4, 5).astype(int)
+    ks = np.arange(1, 4)
     h_mc_1, h_singh_1 = do_entropy_compare(p1, ns, ks)
     h_mc_2, h_singh_2 = do_entropy_compare(p2, ns, ks)
 
