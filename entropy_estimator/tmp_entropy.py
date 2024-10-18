@@ -47,7 +47,7 @@ def do_entropy_compare(p: Distribution, ns, ks):
                 h_singh[j][i] = np.nan, np.nan
             else:
                 h_singh[j][i] = entropy_singh_2003(p, n, k)
-                print("n: " + str(n)+ " k: " + str(k) + str(h_singh[j][i]))
+                print("n: " + str(n)+ " k: " + str(k) + " Entropy: " + str(h_singh[j][i]))
                 print()
 
     return h_mc, h_singh
@@ -56,7 +56,7 @@ def do_entropy_compare(p: Distribution, ns, ks):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    torch.manual_seed(0)
+    torch.manual_seed(5)
     
     # multivariate distribution with mean 0 [2x2], covariance identity matrix [2x2] 
     p1 = MultivariateNormal(torch.zeros(2), torch.eye(2))  
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     )
 
     ns = np.logspace(0, 4, 5).astype(int)
-    ks = np.arange(1, 4)
+    ks = np.arange(1, 6)
     h_mc_1, h_singh_1 = do_entropy_compare(p1, ns, ks)
     h_mc_2, h_singh_2 = do_entropy_compare(p2, ns, ks)
 
