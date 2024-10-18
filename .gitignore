@@ -1,3 +1,4 @@
 myenv/
 mlruns/
 dataset/
+.vscode/
