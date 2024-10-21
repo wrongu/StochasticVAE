@@ -14,7 +14,7 @@ class Stochastic_Recognition_NN(nn.Module):
         self.user_input_logvar = user_input_logvar
 
         for plan_idx in range(len(PLAN)):
-            
+
             #input layer
             if plan_idx == 0:
                 self.weights_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim)))
@@ -70,7 +70,8 @@ class Stochastic_Recognition_NN(nn.Module):
             weights_ipl = self.reparameterization_trick(self.weights_mean[i], self.weights_logvar[i])
             bias_ipl = self.reparameterization_trick(self.bias_mean[i], self.bias_logvar[i])
             x = torch.matmul(weights_ipl, x) + bias_ipl.unsqueeze(dim=1)  
-            if i == len(self.weights_mean) - 1:
+            
+            if i == len(self.weights_mean) - 1:                 #output layer
                 x =  Softplus(x)
 
         return x                
