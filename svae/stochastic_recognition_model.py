@@ -13,27 +13,27 @@ class Stochastic_Recognition_NN(nn.Module):
         
         self.user_input_logvar = user_input_logvar
 
-        for plan_idx in range(len(self.PLAN)):
+        for plan_idx in range(len(PLAN)):
             if plan_idx == 0:
-                self.weights_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx], input_dim)))
-                self.weights_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx], input_dim)))
+                self.weights_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim)))
+                self.weights_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim)))
                 
-                self.bias_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx])))
-                self.bias_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx])))
+                self.bias_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx])))
+                self.bias_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx])))
 
-            elif plan_idx == len(self.PLAN) - 1:
-                self.weights_mean.append(nn.Parameter(torch.Tensor(z_dim, self.PLAN[plan_idx])))
-                self.weights_logvar.append(nn.Parameter(torch.Tensor(z_dim, self.PLAN[plan_idx])))
+            elif plan_idx == len(PLAN) - 1:
+                self.weights_mean.append(nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx])))
+                self.weights_logvar.append(nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx])))
 
                 self.bias_mean.append(nn.Parameter(torch.Tensor(z_dim)))
                 self.bias_logvar.append(nn.Parameter(torch.Tensor(z_dim)))
             
             else:
-                self.weights_mean.append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx], self.PLAN[plan_idx - 1])))
-                self.weights_logvar.append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx], self.PLAN[plan_idx - 1])))
+                self.weights_mean.append(nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1])))
+                self.weights_logvar.append(nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1])))
 
-                self.bias_mean.append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx])))
-                self.bias_logvar.append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx])))
+                self.bias_mean.append(nn.Parameter(torch.Tensor(PLAN[plan_idx])))
+                self.bias_logvar.append(nn.Parameter(torch.Tensor(PLAN[plan_idx])))
 
         self.initialize_parameters()
 
