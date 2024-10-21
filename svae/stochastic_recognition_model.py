@@ -72,17 +72,3 @@ class Stochastic_Recognition_NN(nn.Module):
                 x =  Softplus(x)
 
         return x                
-           
-           
-
-
-
-
-
-
-
-
-
-
-
-        
