@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.init as init
 import numpy as np
 import matplotlib.pyplot as plt
-from training_config import PLAN
+from training_config import PLAN_DECODER
 
 class Stochastic_Density_NN(nn.Module):
 
@@ -12,27 +12,29 @@ class Stochastic_Density_NN(nn.Module):
         
         self.user_input_logvar = user_input_logvar
 
-        for plan_idx in range(len(PLAN)):
+        for plan_idx in range(len(PLAN_DECODER)):
+            #input layer
             if plan_idx == 0:
-                self.weights_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim)))
-                self.weights_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim)))
+                self.weights_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx], z_dim)))
+                self.weights_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx], z_dim)))
                 
-                self.bias_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx])))
-                self.bias_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN[plan_idx])))
+                self.bias_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx])))
+                self.bias_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx])))
 
-            elif plan_idx == len(PLAN) - 1:
-                self.weights_mean.append(nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx])))
-                self.weights_logvar.append(nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx])))
+            #output layer 
+            elif plan_idx == len(PLAN_DECODER) - 1:
+                self.weights_mean.append(nn.Parameter(torch.Tensor(input_dim, PLAN_DECODER[plan_idx])))
+                self.weights_logvar.append(nn.Parameter(torch.Tensor(input_dim, PLAN_DECODER[plan_idx])))
 
-                self.bias_mean.append(nn.Parameter(torch.Tensor(z_dim)))
-                self.bias_logvar.append(nn.Parameter(torch.Tensor(z_dim)))
+                self.bias_mean.append(nn.Parameter(torch.Tensor(input_dim)))
+                self.bias_logvar.append(nn.Parameter(torch.Tensor(input_dim)))
             
             else:
-                self.weights_mean.append(nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1])))
-                self.weights_logvar.append(nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1])))
+                self.weights_mean.append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx], PLAN_DECODER[plan_idx - 1])))
+                self.weights_logvar.append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx], PLAN_DECODER[plan_idx - 1])))
 
-                self.bias_mean.append(nn.Parameter(torch.Tensor(PLAN[plan_idx])))
-                self.bias_logvar.append(nn.Parameter(torch.Tensor(PLAN[plan_idx])))
+                self.bias_mean.append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx])))
+                self.bias_logvar.append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx])))
 
         self.initialize_parameters()
 
