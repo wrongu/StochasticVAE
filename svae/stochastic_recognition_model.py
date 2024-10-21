@@ -3,11 +3,10 @@ import torch.nn as nn
 import torch.nn.init as init
 import numpy as np
 import matplotlib.pyplot as plt
+from training_config import PLAN
 
 
 class Stochastic_Recognition_NN(nn.Module):
-
-    PLAN = [500, 300, 200, 100, 50]
 
     def __init__(self, input_dim, z_dim, user_input_logvar = -2.5):
         super(Stochastic_Recognition_NN, self).__init__()
