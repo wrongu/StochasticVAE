@@ -28,7 +28,6 @@ class Stochastic_Recognition_NN(nn.Module):
 
                 self.bias_mean.append(nn.Parameter(torch.Tensor(z_dim)))
                 self.bias_logvar.append(nn.Parameter(torch.Tensor(z_dim)))
-                
             
             else:
                 self.weights_mean.append(nn.Parameter(torch.Tensor(self.PLAN[plan_idx], self.PLAN[plan_idx - 1])))
