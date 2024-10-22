@@ -14,3 +14,5 @@ class Stochastic_VAE(nn.Module):
         self.decoder = decoder
 
 
+    def loss(self):
+        pass

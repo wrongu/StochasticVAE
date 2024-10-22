@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-import numpy as np
-import matplotlib.pyplot as plt
 from training_config import PLAN
 
 
