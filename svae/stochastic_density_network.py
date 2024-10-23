@@ -1,55 +1,19 @@
 import torch
 import torch.nn as nn
-import torch.nn.init as init
-from training_config import PLAN_DECODER
+from training_config import PLAN_DECODER, LATENT_DIM
+import torch.nn.functional as F
+
 
 class Stochastic_Density_NN(nn.Module):
 
     def __init__(self, input_dim, z_dim, user_input_logvar = -2.5):
         super(Stochastic_Density_NN, self).__init__()
         
-        self.user_input_logvar = user_input_logvar
-
-        for plan_idx in range(len(PLAN_DECODER)):
-            #input layer
-            if plan_idx == 0:
-                self.weights_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx], z_dim)))
-                self.weights_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx], z_dim)))
-                
-                self.bias_mean = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx])))
-                self.bias_logvar = nn.ModuleList().append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx])))
-
-            #output layer 
-            elif plan_idx == len(PLAN_DECODER) - 1:
-                self.weights_mean.append(nn.Parameter(torch.Tensor(input_dim, PLAN_DECODER[plan_idx])))
-                self.weights_logvar.append(nn.Parameter(torch.Tensor(input_dim, PLAN_DECODER[plan_idx])))
-
-                self.bias_mean.append(nn.Parameter(torch.Tensor(input_dim)))
-                self.bias_logvar.append(nn.Parameter(torch.Tensor(input_dim)))
-            
-            else:
-                self.weights_mean.append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx], PLAN_DECODER[plan_idx - 1])))
-                self.weights_logvar.append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx], PLAN_DECODER[plan_idx - 1])))
-
-                self.bias_mean.append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx])))
-                self.bias_logvar.append(nn.Parameter(torch.Tensor(PLAN_DECODER[plan_idx])))
-
-        self.initialize_parameters()
-
-
-    def initialize_parameters(self):
-
-        for i, layer in enumerate(self.weights_mean):
-            init.kaiming_normal_(layer, mode='fan_in', nonlinearity='relu')
-
-        for i, layer in enumerate(self.weights_logvar):
-            init.constant_(layer,self.user_input_logvar) 
-
-        for i, layer in enumerate(self.bias_mean):
-            init.constant_(layer, 0)
-
-        for i, layer in enumerate(self.bias_logvar):
-            init.constant_(layer, self.user_input_logvar)
+        self.fc5 = nn.Linear(LATENT_DIM, PLAN_DECODER[0])
+        self.fc6 = nn.Linear(PLAN_DECODER[0],PLAN_DECODER[1])
+        self.fc7 = nn.Linear(PLAN_DECODER[1],PLAN_DECODER[2])
+        self.fc8 = nn.Linear(PLAN_DECODER[2],PLAN_DECODER[3])
+        self.fc9 = nn.Linear(PLAN_DECODER[3], input_dim)
 
 
     def reparameterization_trick(self, mu, logvar):
@@ -60,4 +24,24 @@ class Stochastic_Density_NN(nn.Module):
 
         return z
     
+    
+    def log_likelihood_gaussian(self, x, mu_z, logvar_z):
+      return -0.5 * (logvar_z + (x - mu_z)**2 / logvar_z.exp()).sum(dim=-1)
+
+
+    def log_likelihood(self, x, recon_x):
+        """Calculate p( x|mu,Sigma) for a gaussian with diagonal covariance."""
+        return self.log_likelihood_gaussian(x, recon_x, self.logvar_x)
+    
+
+    def forward(self, z):
+        h5 = F.relu(self.fc5(z))
+        h6 = F.relu(self.fc6(h5))
+        h7 = F.relu(self.fc7(h6))
+        h8 = F.relu(self.fc8(h7))
+        # h9 = F.relu(self.fc9(h8))
+
+        recon_x = torch.sigmoid(self.fc9(h8))
+
+        return recon_x
                 
