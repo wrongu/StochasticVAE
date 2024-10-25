@@ -15,6 +15,9 @@ class Stochastic_Density_NN(nn.Module):
         self.fc8 = nn.Linear(PLAN_DECODER[2],PLAN_DECODER[3])
         self.fc9 = nn.Linear(PLAN_DECODER[3], input_dim)
 
+        # TIME BEING - Add a diagonal covariance in pixel space (Unnecessary; remove later)
+        self.logvar_x = nn.Parameter(torch.zeros(input_dim))
+
 
     def reparameterization_trick(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
