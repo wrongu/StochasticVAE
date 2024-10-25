@@ -10,7 +10,6 @@ class Stochastic_Recognition_NN(nn.Module):
         
         self.user_input_logvar = user_input_logvar
 
-        # Regular Python lists instead of nn.ModuleList
         self.weights_mean = []
         self.weights_logvar = []
         self.bias_mean = []
@@ -53,6 +52,7 @@ class Stochastic_Recognition_NN(nn.Module):
 
         self.initialize_parameters()
 
+
     def initialize_parameters(self):
         for i, layer in enumerate(self.weights_mean):
             init.kaiming_normal_(layer, mode='fan_in', nonlinearity='relu')
@@ -63,11 +63,18 @@ class Stochastic_Recognition_NN(nn.Module):
         for i, layer in enumerate(self.bias_logvar):
             init.constant_(layer, self.user_input_logvar)
 
+
     def reparameterization_trick(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return mu + eps * std
     
+
+    def kl(self, mu_z, logvar_z):
+        """Calculate KL divergence between a diagonal gaussian and a standard normal."""
+        return -0.5 * torch.sum(1 + logvar_z - mu_z.pow(2) - logvar_z.exp())
+    
+
     def forward(self, x):
 
         for i in range(len(self.weights_mean)):
