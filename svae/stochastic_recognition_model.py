@@ -76,17 +76,14 @@ class Stochastic_Recognition_NN(nn.Module):
     
 
     def forward(self, x):
-
-        for i in range(len(self.weights_mean)):
+        ReLU = nn.ReLU()
+        for i in range(len(self.weights_mean)-1):
             weights_ipl = self.reparameterization_trick(self.weights_mean[i], self.weights_logvar[i])
             bias_ipl = self.reparameterization_trick(self.bias_mean[i], self.bias_logvar[i])
             x = torch.matmul(x, weights_ipl.T) + bias_ipl.view(1, -1)
+            x = ReLU(x)
 
-            if i == len(self.weights_mean) - 1:  # Output layer
-                Softplus = nn.Softplus()
-                x = Softplus(x)
-            else:
-                ReLU = nn.ReLU()
-                x = ReLU(x)
+        mean_z  = torch.matmul(x, self.weights_mean[-1].T) + self.bias_mean[-1].view(1, -1)
+        logvar_z = torch.matmul(x, self.weights_logvar[-1].T) + self.bias_logvar[-1].view(1, -1)
 
-        return x
+        return mean_z, logvar_z
