@@ -72,9 +72,14 @@ def main():
                             ]), download=True)
     train_loader = DataLoader(dataset=dataset, batch_size= BATCH_SIZE, shuffle=True)
 
-    svae = Stochastic_VAE(Stochastic_Recognition_NN(LATENT_DIM), Stochastic_Density_NN(LATENT_DIM))
+    svae = Stochastic_VAE(Stochastic_Recognition_NN(input_dim=784, z_dim=LATENT_DIM), 
+                          Stochastic_Density_NN(input_dim=784,z_dim=LATENT_DIM))
     optim_svae = torch.optim.Adam(svae.parameters(), lr=LEARNING_RATE)
     run_name = 'SVAE'
 
     with mlflow.start_run(run_name=run_name) as run:
         svae = train(train_loader, svae, optim_svae, DEVICE, EPOCHS)
+
+
+if __name__ == "__main__":
+    main()
