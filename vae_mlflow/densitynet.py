@@ -19,6 +19,7 @@ class DensityNet(nn.Module):
         # Add a diagonal covariance in pixel space
         self.logvar_x = nn.Parameter(torch.zeros(input_dim))
 
+
     def log_likelihood_gaussian(self, x, mu_z, logvar_z):
       return -0.5 * (logvar_z + (x - mu_z)**2 / logvar_z.exp()).sum(dim=-1)
 
