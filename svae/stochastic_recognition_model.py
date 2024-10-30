@@ -1,137 +1,140 @@
 import torch
 import torch.nn as nn
-import torch.nn.init as init
 import torch.nn.functional as F
 from training_config import PLAN, DEVICE
+from contextlib import contextmanager, ExitStack
+
+
+class StochasticLinear(nn.Linear):
+    def __init__(self, init_logvar: float = -2.5, *args, **kwargs):
+        super(StochasticLinear, self).__init__(*args, **kwargs)
+
+        # Create _mean and _logvar versions of each parameter
+        self.weights_mean = nn.Parameter(self.weight.data.clone())
+        self.weights_logvar = nn.Parameter(torch.ones_like(self.weight) * init_logvar)
+        self._has_bias = self.bias is not None
+        if self._has_bias:
+            self.bias_mean = nn.Parameter(self.bias.data.clone())
+            self.bias_logvar = nn.Parameter(torch.ones_like(self.bias) * init_logvar)
+
+        # Remove old parameters
+        delattr(self, 'weight')
+        delattr(self, 'bias')
+
+        # Keep track of self._eps for reparameterization trick and freezing
+        self._weight_eps = None
+        self._bias_eps = None
+        self.resample()
+
+        self._frozen = False
+
+    @contextmanager
+    def frozen(self):
+        self._frozen = True
+        yield
+        self._frozen = False
+
+    def resample(self):
+        self._weight_eps = torch.randn_like(self.weights_mean)
+        self._bias_eps = torch.randn_like(self.bias_mean) if self._has_bias else None
+
+    def forward(self, x):
+        if not self._frozen:
+            self.resample()
+
+        weight = self.weights_mean + self.weights_logvar.exp() * self._weight_eps
+        bias = self.bias_mean + self.bias_logvar.exp() * self._bias_eps if self._has_bias else None
+        return F.linear(x, weight, bias)
+
 
 class Stochastic_Recognition_NN(nn.Module):
 
-    def __init__(self, input_dim, z_dim, user_input_logvar = -2.5):
+    def __init__(self, input_dim, z_dim, user_input_logvar=-2.5):
         super(Stochastic_Recognition_NN, self).__init__()
-        
-        self.user_input_logvar = user_input_logvar
 
-        self.weights_mean = []
-        self.weights_logvar = []
-        self.bias_mean = []
-        self.bias_logvar = []
         self.norms = nn.ModuleList()
+        layers = [StochasticLinear(user_input_logvar, input_dim, PLAN[0]), nn.LayerNorm(PLAN[0]), nn.ReLU()]
+        for in_size, out_size in zip(PLAN[:-1], PLAN[1:]):
+            layers.append(StochasticLinear(user_input_logvar, in_size, out_size))
+            layers.append(nn.LayerNorm(out_size))
+            layers.append(nn.ReLU())
 
-        for plan_idx in range(len(PLAN)+1):
+        self.backbone = nn.Sequential(*layers)
+        self.head_mu_z = StochasticLinear(user_input_logvar, PLAN[-1], z_dim)
+        self.head_logvar_z = StochasticLinear(user_input_logvar, PLAN[-1], z_dim)
+        self._eps = None
+        self.z_dim = z_dim
+        self.resample()
+        self._frozen = False
 
-            # Input layer
-            if plan_idx == 0:
-                w_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim))
-                w_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim))
-                b_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
-                b_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
+    def resample(self):
+        self._eps = torch.randn(1, self.z_dim)
 
-            # Output layer
-            elif plan_idx == len(PLAN):
-                #head 1 - mean
-                head_1_w_mean = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
-                head_1_w_logvar = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
-                head_1_b_mean = nn.Parameter(torch.Tensor(z_dim))
-                head_1_b_logvar = nn.Parameter(torch.Tensor(z_dim))
+    @contextmanager
+    def frozen_weights(self):
+        with ExitStack() as stack:
+            for _, module in self.named_modules():
+                if isinstance(module, StochasticLinear):
+                    stack.enter_context(module.frozen())
+            yield
 
-                #head 2 - logvar
-                head_2_w_mean = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
-                head_2_w_logvar = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
-                head_2_b_mean = nn.Parameter(torch.Tensor(z_dim))
-                head_2_b_logvar = nn.Parameter(torch.Tensor(z_dim))
-
-                #head 1 - registering the parameters
-                self.register_parameter(f"weights_mean_{plan_idx}", head_1_w_mean)
-                self.register_parameter(f"weights_logvar_{plan_idx}", head_1_w_logvar)
-                self.register_parameter(f"bias_mean_{plan_idx}", head_1_b_mean)
-                self.register_parameter(f"bias_logvar_{plan_idx}", head_1_b_logvar)
-
-                #head 2 - registering the parameters
-                self.register_parameter(f"weights_mean_{plan_idx}", head_2_w_mean)
-                self.register_parameter(f"weights_logvar_{plan_idx}", head_2_w_logvar)
-                self.register_parameter(f"bias_mean_{plan_idx}", head_2_b_mean)
-                self.register_parameter(f"bias_logvar_{plan_idx}", head_2_b_logvar)
-
-                self.weights_mean.append(head_1_w_mean)
-                self.weights_logvar.append(head_1_w_logvar)
-                self.bias_mean.append(head_1_b_mean)
-                self.bias_logvar.append(head_1_b_logvar)
-
-                self.weights_mean.append(head_2_w_mean)
-                self.weights_logvar.append(head_2_w_logvar)
-                self.bias_mean.append(head_2_b_mean)
-                self.bias_logvar.append(head_2_b_logvar)
-
-
-                break
-
-            # Hidden layers
-            else:
-                w_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1]))
-                w_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1]))
-                b_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
-                b_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
-            
-            self.norms.append(nn.LayerNorm(PLAN[plan_idx]))
-
-            # Register parameters
-            self.register_parameter(f"weights_mean_{plan_idx}", w_mean)
-            self.register_parameter(f"weights_logvar_{plan_idx}", w_logvar)
-            self.register_parameter(f"bias_mean_{plan_idx}", b_mean)
-            self.register_parameter(f"bias_logvar_{plan_idx}", b_logvar)
-
-            # Append to lists
-            self.weights_mean.append(w_mean)
-            self.weights_logvar.append(w_logvar)
-            self.bias_mean.append(b_mean)
-            self.bias_logvar.append(b_logvar)
-
-        self.initialize_parameters()
-
-
-    def initialize_parameters(self):
-        for i, layer in enumerate(self.weights_mean):
-            init.kaiming_normal_(layer, mode='fan_in', nonlinearity='relu')
-        for i, layer in enumerate(self.weights_logvar):
-            init.constant_(layer, self.user_input_logvar)
-        for i, layer in enumerate(self.bias_mean):
-            init.constant_(layer, 0)
-        for i, layer in enumerate(self.bias_logvar):
-            init.constant_(layer, self.user_input_logvar)
+    @contextmanager
+    def frozen_z(self):
+        self._frozen = True
+        yield
+        self._frozen = False
 
 
     def reparameterization_trick(self, mu, logvar):
+        if not self._frozen:
+            self.resample()
         std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-    
+        return mu + self._eps * std
 
     def kl(self, mu_z, logvar_z):
         """Calculate KL divergence between a diagonal gaussian and a standard normal."""
         return -0.5 * torch.sum(1 + logvar_z - mu_z.pow(2) - logvar_z.exp())
-    
 
     def forward(self, x):
-        for i in range(len(self.weights_mean)-2):
-            weights_ipl = self.reparameterization_trick(self.weights_mean[i], self.weights_logvar[i])
-            bias_ipl = self.reparameterization_trick(self.bias_mean[i], self.bias_logvar[i])
-            x = torch.matmul(x, weights_ipl.T) + bias_ipl.view(1, -1)
-            x = self.norms[i](x)
-            ### TODO - Normalization technique
-            print("Layer", i, "mean=", x.mean().item(), "std=", x.std().item())
-            x = F.relu(x)
-
-        # head 1 - mean prediction
-        head_1_weights_ipl = self.reparameterization_trick(self.weights_mean[-2], self.weights_logvar[-2])
-        head_1_bias_ipl = self.reparameterization_trick(self.bias_mean[-2], self.bias_logvar[-2])
-        head_1_weights_ipl, head_1_bias_ipl = head_1_weights_ipl.to(DEVICE), head_1_bias_ipl.to(DEVICE)
-        mean_z = torch.matmul(x, head_1_weights_ipl.T) + head_1_bias_ipl.view(1, -1)
-
-        #head 2- logvar prediction
-        head_2_weights_ipl = self.reparameterization_trick(self.weights_mean[-1], self.weights_logvar[-1])
-        head_2_bias_ipl = self.reparameterization_trick(self.bias_mean[-1], self.bias_logvar[-1])
-        head_2_weights_ipl, head_2_bias_ipl = head_2_weights_ipl.to(DEVICE), head_2_bias_ipl.to(DEVICE)
-        logvar_z = torch.matmul(x, head_2_weights_ipl.T) + head_2_bias_ipl.view(1, -1)
-
-
+        x = x.view(x.size(0), -1)
+        x = self.backbone(x)
+        mean_z = self.head_mu_z(x)
+        logvar_z = self.head_logvar_z(x)
         return mean_z, logvar_z
+
+
+if __name__ == "__main__":
+    my_model = Stochastic_Recognition_NN(input_dim=28*28, z_dim=10)
+
+    x = torch.randn(10, 1, 28, 28)
+    with my_model.frozen_weights(), my_model.frozen_z():
+        out1 = my_model(x)
+        z1 = my_model.reparameterization_trick(*out1)
+        out2 = my_model(x)
+        z2 = my_model.reparameterization_trick(*out2)
+
+    assert torch.allclose(out1[0], out2[0])
+    assert torch.allclose(out1[1], out2[1])
+    assert torch.allclose(z1, z2)
+
+    with my_model.frozen_weights():
+        out3 = my_model(x)
+        z3 = my_model.reparameterization_trick(*out3)
+        out4 = my_model(x)
+        z4 = my_model.reparameterization_trick(*out4)
+
+    assert not torch.allclose(z3, z4)
+    assert torch.allclose(out3[0], out4[0])
+    assert torch.allclose(out3[1], out4[1])
+
+    with my_model.frozen_z():
+        out5 = my_model(x)
+        z5 = my_model.reparameterization_trick(*out5)
+        out6 = my_model(x)
+        z6 = my_model.reparameterization_trick(*out6)
+        z7 = my_model.reparameterization_trick(*out6)
+
+    assert not torch.allclose(z5, z6)
+    assert torch.allclose(z6, z7)
+    assert not torch.allclose(out5[0], out6[0])
+    assert not torch.allclose(out5[1], out6[1])
