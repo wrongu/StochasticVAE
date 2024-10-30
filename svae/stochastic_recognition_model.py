@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-from training_config import PLAN
+from training_config import PLAN, DEVICE
 
 class Stochastic_Recognition_NN(nn.Module):
 
@@ -26,10 +26,42 @@ class Stochastic_Recognition_NN(nn.Module):
 
             # Output layer
             elif plan_idx == len(PLAN):
-                w_mean = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
-                w_logvar = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
-                b_mean = nn.Parameter(torch.Tensor(z_dim))
-                b_logvar = nn.Parameter(torch.Tensor(z_dim))
+                #head 1 - mean
+                head_1_w_mean = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
+                head_1_w_logvar = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
+                head_1_b_mean = nn.Parameter(torch.Tensor(z_dim))
+                head_1_b_logvar = nn.Parameter(torch.Tensor(z_dim))
+
+                #head 2 - logvar
+                head_2_w_mean = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
+                head_2_w_logvar = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx-1]))
+                head_2_b_mean = nn.Parameter(torch.Tensor(z_dim))
+                head_2_b_logvar = nn.Parameter(torch.Tensor(z_dim))
+
+                #head 1 - registering the parameters
+                self.register_parameter(f"weights_mean_{plan_idx}", head_1_w_mean)
+                self.register_parameter(f"weights_logvar_{plan_idx}", head_1_w_logvar)
+                self.register_parameter(f"bias_mean_{plan_idx}", head_1_b_mean)
+                self.register_parameter(f"bias_logvar_{plan_idx}", head_1_b_logvar)
+
+                #head 2 - registering the parameters
+                self.register_parameter(f"weights_mean_{plan_idx}", head_2_w_mean)
+                self.register_parameter(f"weights_logvar_{plan_idx}", head_2_w_logvar)
+                self.register_parameter(f"bias_mean_{plan_idx}", head_2_b_mean)
+                self.register_parameter(f"bias_logvar_{plan_idx}", head_2_b_logvar)
+
+                self.weights_mean.append(head_1_w_mean)
+                self.weights_logvar.append(head_1_w_logvar)
+                self.bias_mean.append(head_1_b_mean)
+                self.bias_logvar.append(head_1_b_logvar)
+
+                self.weights_mean.append(head_2_w_mean)
+                self.weights_logvar.append(head_2_w_logvar)
+                self.bias_mean.append(head_2_b_mean)
+                self.bias_logvar.append(head_2_b_logvar)
+
+
+                break
 
             # Hidden layers
             else:
@@ -76,14 +108,24 @@ class Stochastic_Recognition_NN(nn.Module):
     
 
     def forward(self, x):
-        ReLU = nn.ReLU()
-        for i in range(len(self.weights_mean)-1):
+        tanh = nn.Tanh()
+        for i in range(len(self.weights_mean)-2):
             weights_ipl = self.reparameterization_trick(self.weights_mean[i], self.weights_logvar[i])
             bias_ipl = self.reparameterization_trick(self.bias_mean[i], self.bias_logvar[i])
             x = torch.matmul(x, weights_ipl.T) + bias_ipl.view(1, -1)
-            x = ReLU(x)
+            x = tanh(x)
 
-        mean_z  = torch.matmul(x, self.weights_mean[-1].T) + self.bias_mean[-1].view(1, -1)
-        logvar_z = torch.matmul(x, self.weights_logvar[-1].T) + self.bias_logvar[-1].view(1, -1)
+        # head 1 - mean prediction
+        head_1_weights_ipl = self.reparameterization_trick(self.weights_mean[-2], self.weights_logvar[-2])
+        head_1_bias_ipl = self.reparameterization_trick(self.bias_mean[-2], self.bias_logvar[-2])
+        head_1_weights_ipl, head_1_bias_ipl = head_1_weights_ipl.to(DEVICE), head_1_bias_ipl.to(DEVICE)
+        mean_z = torch.matmul(x, head_1_weights_ipl.T) + head_1_bias_ipl.view(1, -1)
+
+        #head 2- logvar prediction
+        head_2_weights_ipl = self.reparameterization_trick(self.weights_mean[-1], self.weights_logvar[-1])
+        head_2_bias_ipl = self.reparameterization_trick(self.bias_mean[-1], self.bias_logvar[-1])
+        head_2_weights_ipl, head_2_bias_ipl = head_2_weights_ipl.to(DEVICE), head_2_bias_ipl.to(DEVICE)
+        logvar_z = torch.matmul(x, head_2_weights_ipl.T) + head_2_bias_ipl.view(1, -1)
+
 
         return mean_z, logvar_z
