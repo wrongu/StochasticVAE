@@ -62,12 +62,12 @@ def train(train_loader, model, optimizer, device, num_epochs):
                         mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
 
         mlflow.log_metric("ELBO", -total_loss, step=epoch)
-        print("Epoch : " + str(epoch)+ " Loss: " + str(-total_loss))
+        # print("Epoch : " + str(epoch)+ " Loss: " + str(-total_loss))
 
     # create a computation graph
-    output_mean, output_logvar = model.encoder(data)
-    combined_output = torch.stack((output_mean, output_logvar), dim=0)
-    make_dot(combined_output, params=dict(list(model.encoder.named_parameters()))).render("svae/computation_graph", format="png")
+    # output_mean, output_logvar = model.encoder(data)
+    # combined_output = torch.stack((output_mean, output_logvar), dim=0)
+    # make_dot(combined_output, params=dict(list(model.encoder.named_parameters()))).render("svae/computation_graph", format="png")
 
 
     return model

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+import torch.nn.functional as F
 from training_config import PLAN, DEVICE
 
 class Stochastic_Recognition_NN(nn.Module):
@@ -14,6 +15,7 @@ class Stochastic_Recognition_NN(nn.Module):
         self.weights_logvar = []
         self.bias_mean = []
         self.bias_logvar = []
+        self.norms = nn.ModuleList()
 
         for plan_idx in range(len(PLAN)+1):
 
@@ -69,6 +71,8 @@ class Stochastic_Recognition_NN(nn.Module):
                 w_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1]))
                 b_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
                 b_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
+            
+            self.norms.append(nn.LayerNorm(PLAN[plan_idx]))
 
             # Register parameters
             self.register_parameter(f"weights_mean_{plan_idx}", w_mean)
@@ -108,12 +112,14 @@ class Stochastic_Recognition_NN(nn.Module):
     
 
     def forward(self, x):
-        tanh = nn.Tanh()
         for i in range(len(self.weights_mean)-2):
             weights_ipl = self.reparameterization_trick(self.weights_mean[i], self.weights_logvar[i])
             bias_ipl = self.reparameterization_trick(self.bias_mean[i], self.bias_logvar[i])
             x = torch.matmul(x, weights_ipl.T) + bias_ipl.view(1, -1)
-            x = tanh(x)
+            x = self.norms[i](x)
+            ### TODO - Normalization technique
+            print("Layer", i, "mean=", x.mean().item(), "std=", x.std().item())
+            x = F.relu(x)
 
         # head 1 - mean prediction
         head_1_weights_ipl = self.reparameterization_trick(self.weights_mean[-2], self.weights_logvar[-2])
