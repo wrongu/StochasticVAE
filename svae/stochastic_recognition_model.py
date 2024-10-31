@@ -6,7 +6,7 @@ from training_config import PLAN, DEVICE
 
 class Stochastic_Recognition_NN(nn.Module):
 
-    def __init__(self, input_dim, z_dim, user_input_logvar = -2.5):
+    def __init__(self, input_dim, z_dim, user_input_logvar = -20):
         super(Stochastic_Recognition_NN, self).__init__()
         
         self.user_input_logvar = user_input_logvar
@@ -117,8 +117,6 @@ class Stochastic_Recognition_NN(nn.Module):
             bias_ipl = self.reparameterization_trick(self.bias_mean[i], self.bias_logvar[i])
             x = torch.matmul(x, weights_ipl.T) + bias_ipl.view(1, -1)
             x = self.norms[i](x)
-            ### TODO - Normalization technique
-            print("Layer", i, "mean=", x.mean().item(), "std=", x.std().item())
             x = F.relu(x)
 
         # head 1 - mean prediction
