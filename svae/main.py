@@ -15,6 +15,7 @@ from stochastic_recognition_model import Stochastic_Recognition_NN
 from stochastic_density_network import Stochastic_Density_NN
 import mlflow
 from torchviz import make_dot
+import os
 
 
 
@@ -74,8 +75,31 @@ def train(train_loader, model, optimizer, device, num_epochs):
 
 
 
-def test():
-    pass
+def test(model:Stochastic_VAE):
+    model.cpu()
+    model.eval()
+    file_path = "svae/output/generated_output.png"
+
+
+    n_samples = 100
+    z = torch.randn((n_samples, LATENT_DIM))
+
+    with torch.no_grad():
+        mu_x = model.decoder(z)
+        eps = torch.randn(n_samples, 784)
+        std_x = torch.exp(model.decoder.logvar_x / 2)
+        x = mu_x #+ std_x * eps
+
+    grid_of_generated_xs = x.reshape(10, 10, 28, 28).permute(0, 2, 1, 3).reshape(280, 280)
+    plt.figure(figsize=(10, 10))
+    plt.imshow(grid_of_generated_xs, cmap='Greys')
+    plt.axis('off')  
+    plt.savefig(file_path)
+
+    mlflow.log_artifact(file_path)
+
+    # os.remove(file_path)
+
 
 def main():
     dataset = datasets.MNIST(root='dataset/', train=True, transform = transforms.Compose([
@@ -91,6 +115,7 @@ def main():
 
     with mlflow.start_run(run_name=run_name) as run:
         svae = train(train_loader, svae, optim_svae, DEVICE, EPOCHS)
+        test(svae)
 
 
 if __name__ == "__main__":
