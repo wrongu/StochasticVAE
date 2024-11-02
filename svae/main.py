@@ -43,7 +43,7 @@ def train(train_loader, model, optimizer, device, num_epochs):
             data = data.view(-1, 784).to(device)
 
             optimizer.zero_grad()
-            loss, kl_term, reconstruction_loss = model.loss(data)
+            loss, kl_term, reconstruction_loss, x_recon = model.loss(data)
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
@@ -62,10 +62,33 @@ def train(train_loader, model, optimizer, device, num_epochs):
                         mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
                         mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
 
+        if epoch % 10 == 0:  
+            with torch.no_grad():
+                # reshape input and reconstructed images
+                original_images = data.view(-1, 1, 28, 28)  # (B, 1, 28, 28)
+                reconstructed_images = x_recon.view(-1, 1, 28, 28)  # (B, 1, 28, 28)
+
+                # Concatenate images side-by-side
+                comparison = torch.cat([original_images, reconstructed_images], dim=3)  # (B, 1, 28, 56)
+                grid = torchvision.utils.make_grid(comparison, nrow=8)
+
+                # Save the grid image
+                file_path = f"svae/output/reconstructed_images_epoch_{epoch}.png"
+                plt.figure(figsize=(10, 10))
+                plt.imshow(grid.permute(1, 2, 0).cpu().numpy(), cmap='gray')
+                plt.axis('off')
+                plt.savefig(file_path)
+
+                # Log with MLflow
+                mlflow.log_artifact(file_path)
+
+                # Remove the file if desired
+                os.remove(file_path)
+        
         mlflow.log_metric("ELBO", -total_loss, step=epoch)
         # print("Epoch : " + str(epoch)+ " Loss: " + str(-total_loss))
 
-    # create a computation graph
+    ## create a computation graph
     # output_mean, output_logvar = model.encoder(data)
     # combined_output = torch.stack((output_mean, output_logvar), dim=0)
     # make_dot(combined_output, params=dict(list(model.encoder.named_parameters()))).render("svae/computation_graph", format="png")
@@ -98,7 +121,7 @@ def test(model:Stochastic_VAE):
 
     mlflow.log_artifact(file_path)
 
-    # os.remove(file_path)
+    os.remove(file_path)
 
 
 def main():
@@ -115,7 +138,7 @@ def main():
 
     with mlflow.start_run(run_name=run_name) as run:
         svae = train(train_loader, svae, optim_svae, DEVICE, EPOCHS)
-        test(svae)
+        # test(svae)
 
 
 if __name__ == "__main__":
