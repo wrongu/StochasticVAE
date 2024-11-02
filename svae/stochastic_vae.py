@@ -36,6 +36,6 @@ class Stochastic_VAE(nn.Module):
         # elbo = reconstruction_term - kl_term
         loss =  kl_term - reconstruction_term
 
-        return loss.sum(), kl_term, reconstruction_term
+        return loss.sum(), kl_term, reconstruction_term, x_recon
     
     
