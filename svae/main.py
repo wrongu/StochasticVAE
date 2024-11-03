@@ -1,151 +1,77 @@
-import torch
-import numpy as np
-from torch import nn
-import torch.nn.functional as F
-import torchvision
+import lightning as lit
+from lightning.pytorch.loggers import MLFlowLogger
 from torchvision import transforms
-from torchvision.utils import save_image
-from tqdm import tqdm
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-from training_config import EPOCHS, LEARNING_RATE, BATCH_SIZE, DEVICE, LATENT_DIM, PLAN
+from training_config import (
+    EPOCHS,
+    BATCH_SIZE,
+    LATENT_DIM,
+    MLFLOW_TRACKING_URI,
+    DATA_ROOT,
+    PLAN,
+    PLAN_DECODER,
+    LEARNING_RATE,
+)
 from stochastic_vae import Stochastic_VAE
 from stochastic_recognition_model import Stochastic_Recognition_NN
 from stochastic_density_network import Stochastic_Density_NN
-import mlflow
-from torchviz import make_dot
-import os
-
-
-mlflow.set_experiment("SVAE")
-
-
-def train(train_loader, model, optimizer, device, num_epochs):
-    model.to(device)
-    model.train()
-    losses = []
-    steps = 0
-    encoder_num_layers = len(PLAN)
-
-    mlflow.log_param("Learning Rate", LEARNING_RATE)
-    mlflow.log_param("Epochs", EPOCHS)
-    mlflow.log_param("Batch Size", BATCH_SIZE)
-    mlflow.log_param("Latent Space size", LATENT_DIM)
-    mlflow.log_param("Number of layers", encoder_num_layers)
-
-    for epoch in tqdm(range(num_epochs), desc="Epochs"):
-        total_loss = 0
-
-        for batch_idx, (data, _) in enumerate(train_loader):
-            steps += 1
-            data = data.view(-1, 784).to(device)
-
-            optimizer.zero_grad()
-            loss, kl_term, reconstruction_loss, x_recon = model.loss(data)
-            losses.append(loss.item())
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item()
-
-            mlflow.log_metric("KL Divergence term", kl_term, step=steps)
-            mlflow.log_metric("Reconstruction log likelihood", reconstruction_loss, step=steps)
-
-            for name, param in model.named_parameters():
-                if "encoder" in name:
-                    if "weight" in name:
-                        mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
-                        mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
-                    if "bias" in name:
-                        mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
-                        mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
-
-        if epoch % 10 == 0:
-            with torch.no_grad():
-                # reshape input and reconstructed images
-                original_images = data.view(-1, 1, 28, 28)  # (B, 1, 28, 28)
-                reconstructed_images = x_recon.view(-1, 1, 28, 28)  # (B, 1, 28, 28)
-
-                # Concatenate images side-by-side
-                comparison = torch.cat(
-                    [original_images, reconstructed_images], dim=3
-                )  # (B, 1, 28, 56)
-                grid = torchvision.utils.make_grid(comparison, nrow=8)
-
-                # Save the grid image
-                file_path = f"svae/output/reconstructed_images_epoch_{epoch}.png"
-                plt.figure(figsize=(10, 10))
-                plt.imshow(grid.permute(1, 2, 0).cpu().numpy(), cmap="gray")
-                plt.axis("off")
-                plt.savefig(file_path)
-
-                # Log with MLflow
-                mlflow.log_artifact(file_path)
-
-                # Remove the file if desired
-                os.remove(file_path)
-
-        mlflow.log_metric("ELBO", -total_loss, step=epoch)
-        # print("Epoch : " + str(epoch)+ " Loss: " + str(-total_loss))
-
-    ## create a computation graph
-    # output_mean, output_logvar = model.encoder(data)
-    # combined_output = torch.stack((output_mean, output_logvar), dim=0)
-    # make_dot(combined_output, params=dict(list(model.encoder.named_parameters()))).render("svae/computation_graph", format="png")
-
-    return model
-
-
-def test(model: Stochastic_VAE):
-    model.cpu()
-    model.eval()
-    file_path = "svae/output/generated_output.png"
-
-    n_samples = 100
-    z = torch.randn((n_samples, LATENT_DIM))
-
-    with torch.no_grad():
-        mu_x = model.decoder(z)
-        eps = torch.randn(n_samples, 784)
-        std_x = torch.exp(model.decoder.logvar_x / 2)
-        x = mu_x  # + std_x * eps
-
-    grid_of_generated_xs = x.reshape(10, 10, 28, 28).permute(0, 2, 1, 3).reshape(280, 280)
-    plt.figure(figsize=(10, 10))
-    plt.imshow(grid_of_generated_xs, cmap="Greys")
-    plt.axis("off")
-    plt.savefig(file_path)
-
-    mlflow.log_artifact(file_path)
-
-    os.remove(file_path)
+from pathlib import Path
 
 
 def main():
-    dataset = datasets.MNIST(
-        root="dataset/",
-        train=True,
-        transform=transforms.Compose(
-            [
-                transforms.ToTensor()
-                # transforms.Normalize((0.5,), (0.5,))
-            ]
-        ),
-        download=True,
+    ################
+    ## Data setup ##
+    ################
+
+    train_dataset = datasets.MNIST(
+        root=Path(DATA_ROOT) / "mnist", train=True, transform=transforms.ToTensor()
     )
-    train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    val_dataset = datasets.MNIST(
+        root=Path(DATA_ROOT) / "mnist", train=False, transform=transforms.ToTensor()
+    )
+    val_loader = DataLoader(dataset=val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+    #################
+    ## Model setup ##
+    #################
 
     svae = Stochastic_VAE(
         Stochastic_Recognition_NN(input_dim=784, z_dim=LATENT_DIM),
         Stochastic_Density_NN(input_dim=784, z_dim=LATENT_DIM),
     )
-    optim_svae = torch.optim.Adam(svae.parameters(), lr=LEARNING_RATE)
-    run_name = "SVAE"
 
-    with mlflow.start_run(run_name=run_name) as run:
-        svae = train(train_loader, svae, optim_svae, DEVICE, EPOCHS)
-        # test(svae)
+    #####################
+    ## Lightning setup ##
+    #####################
+
+    logger = MLFlowLogger(
+        experiment_name="LitSVAE",
+        tracking_uri=MLFLOW_TRACKING_URI,
+        log_model=True,
+    )
+    trainer = lit.Trainer(
+        logger=logger,
+        max_epochs=EPOCHS,
+        default_root_dir=logger.root_dir,  # TODO - double check that logger.root_dir is right
+    )
+
+    ############
+    ## Run it ##
+    ############
+
+    logger.log_hyperparams(
+        {
+            "PLAN": PLAN,
+            "PLAN_DECODER": PLAN_DECODER,
+            "LATENT_DIM": LATENT_DIM,
+            "LEARNING_RATE": LEARNING_RATE,
+            "EPOCHS": EPOCHS,
+            "BATCH_SIZE": BATCH_SIZE,
+        }
+    )
+    trainer.fit(model=svae, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
 
 if __name__ == "__main__":

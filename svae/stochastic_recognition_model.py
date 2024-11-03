@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-from training_config import PLAN, DEVICE
+from training_config import PLAN
 
 
 class Stochastic_Recognition_NN(nn.Module):
@@ -12,90 +12,50 @@ class Stochastic_Recognition_NN(nn.Module):
 
         self.user_input_logvar = user_input_logvar
 
-        self.weights_mean = []
-        self.weights_logvar = []
-        self.bias_mean = []
-        self.bias_logvar = []
+        self.weights_mean = nn.ParameterList()
+        self.weights_logvar = nn.ParameterList()
+        self.bias_mean = nn.ParameterList()
+        self.bias_logvar = nn.ParameterList()
         self.norms = nn.ModuleList()
 
-        for plan_idx in range(len(PLAN) + 1):
+        plan_with_inputs_and_outputs = [input_dim] + PLAN + [z_dim]
 
-            # Input layer
-            if plan_idx == 0:
-                w_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim))
-                w_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx], input_dim))
-                b_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
-                b_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
+        for plan_idx in range(1, len(plan_with_inputs_and_outputs)):
+            in_size = plan_with_inputs_and_outputs[plan_idx - 1]
+            out_size = plan_with_inputs_and_outputs[plan_idx]
 
-            # Output layer
-            elif plan_idx == len(PLAN):
+            # Special case for last layer (2 heads)
+            if plan_idx == len(plan_with_inputs_and_outputs) - 1:
                 # head 1 - mean
-                head_1_w_mean = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx - 1]))
-                head_1_w_logvar = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx - 1]))
-                head_1_b_mean = nn.Parameter(torch.Tensor(z_dim))
-                head_1_b_logvar = nn.Parameter(torch.Tensor(z_dim))
+                self.weights_mean.append(torch.Tensor(out_size, in_size))
+                self.weights_logvar.append(torch.Tensor(out_size, in_size))
+                self.bias_mean.append(torch.Tensor(out_size))
+                self.bias_logvar.append(torch.Tensor(out_size))
 
                 # head 2 - logvar
-                head_2_w_mean = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx - 1]))
-                head_2_w_logvar = nn.Parameter(torch.Tensor(z_dim, PLAN[plan_idx - 1]))
-                head_2_b_mean = nn.Parameter(torch.Tensor(z_dim))
-                head_2_b_logvar = nn.Parameter(torch.Tensor(z_dim))
-
-                # head 1 - registering the parameters
-                self.register_parameter(f"weights_mean_{plan_idx}", head_1_w_mean)
-                self.register_parameter(f"weights_logvar_{plan_idx}", head_1_w_logvar)
-                self.register_parameter(f"bias_mean_{plan_idx}", head_1_b_mean)
-                self.register_parameter(f"bias_logvar_{plan_idx}", head_1_b_logvar)
-
-                # head 2 - registering the parameters
-                self.register_parameter(f"weights_mean_{plan_idx}", head_2_w_mean)
-                self.register_parameter(f"weights_logvar_{plan_idx}", head_2_w_logvar)
-                self.register_parameter(f"bias_mean_{plan_idx}", head_2_b_mean)
-                self.register_parameter(f"bias_logvar_{plan_idx}", head_2_b_logvar)
-
-                self.weights_mean.append(head_1_w_mean)
-                self.weights_logvar.append(head_1_w_logvar)
-                self.bias_mean.append(head_1_b_mean)
-                self.bias_logvar.append(head_1_b_logvar)
-
-                self.weights_mean.append(head_2_w_mean)
-                self.weights_logvar.append(head_2_w_logvar)
-                self.bias_mean.append(head_2_b_mean)
-                self.bias_logvar.append(head_2_b_logvar)
-
-                break
-
-            # Hidden layers
+                self.weights_mean.append(torch.Tensor(out_size, in_size))
+                self.weights_logvar.append(torch.Tensor(out_size, in_size))
+                self.bias_mean.append(torch.Tensor(out_size))
+                self.bias_logvar.append(torch.Tensor(out_size))
             else:
-                w_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1]))
-                w_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx], PLAN[plan_idx - 1]))
-                b_mean = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
-                b_logvar = nn.Parameter(torch.Tensor(PLAN[plan_idx]))
+                self.weights_mean.append(torch.Tensor(out_size, in_size))
+                self.weights_logvar.append(torch.Tensor(out_size, in_size))
+                self.bias_mean.append(torch.Tensor(out_size))
+                self.bias_logvar.append(torch.Tensor(out_size))
 
-            self.norms.append(nn.LayerNorm(PLAN[plan_idx]))
-
-            # Register parameters
-            self.register_parameter(f"weights_mean_{plan_idx}", w_mean)
-            self.register_parameter(f"weights_logvar_{plan_idx}", w_logvar)
-            self.register_parameter(f"bias_mean_{plan_idx}", b_mean)
-            self.register_parameter(f"bias_logvar_{plan_idx}", b_logvar)
-
-            # Append to lists
-            self.weights_mean.append(w_mean)
-            self.weights_logvar.append(w_logvar)
-            self.bias_mean.append(b_mean)
-            self.bias_logvar.append(b_logvar)
+                # Layer normalization for everything except the last layer
+                self.norms.append(nn.LayerNorm(out_size))
 
         self.initialize_parameters()
 
     def initialize_parameters(self):
-        for i, layer in enumerate(self.weights_mean):
+        for layer in self.weights_mean:
             init.kaiming_normal_(layer, mode="fan_in", nonlinearity="relu")
-        for i, layer in enumerate(self.weights_logvar):
+        for layer in self.weights_logvar:
             init.constant_(layer, self.user_input_logvar)
-        for i, layer in enumerate(self.bias_mean):
+        for layer in self.bias_mean:
             init.constant_(layer, 0)
-        for i, layer in enumerate(self.bias_logvar):
+        for layer in self.bias_logvar:
             init.constant_(layer, self.user_input_logvar)
 
     def reparameterization_trick(self, mu, logvar):
@@ -108,6 +68,7 @@ class Stochastic_Recognition_NN(nn.Module):
         return -0.5 * torch.sum(1 + logvar_z - mu_z.pow(2) - logvar_z.exp())
 
     def forward(self, x):
+        x = torch.flatten(x, start_dim=1)
         for i in range(len(self.weights_mean) - 2):
             weights_ipl = self.reparameterization_trick(
                 self.weights_mean[i], self.weights_logvar[i]
@@ -122,9 +83,6 @@ class Stochastic_Recognition_NN(nn.Module):
             self.weights_mean[-2], self.weights_logvar[-2]
         )
         head_1_bias_ipl = self.reparameterization_trick(self.bias_mean[-2], self.bias_logvar[-2])
-        head_1_weights_ipl, head_1_bias_ipl = head_1_weights_ipl.to(DEVICE), head_1_bias_ipl.to(
-            DEVICE
-        )
         mean_z = torch.matmul(x, head_1_weights_ipl.T) + head_1_bias_ipl.view(1, -1)
 
         # head 2- logvar prediction
@@ -132,9 +90,21 @@ class Stochastic_Recognition_NN(nn.Module):
             self.weights_mean[-1], self.weights_logvar[-1]
         )
         head_2_bias_ipl = self.reparameterization_trick(self.bias_mean[-1], self.bias_logvar[-1])
-        head_2_weights_ipl, head_2_bias_ipl = head_2_weights_ipl.to(DEVICE), head_2_bias_ipl.to(
-            DEVICE
-        )
         logvar_z = torch.matmul(x, head_2_weights_ipl.T) + head_2_bias_ipl.view(1, -1)
 
         return mean_z, logvar_z
+
+    @torch.no_grad()
+    def params_stats(self):
+        stats = {}
+        for i, (mu_w, mu_b, logvar_w, logvar_b) in enumerate(zip(self.weights_mean, self.bias_mean, self.weights_logvar, self.bias_logvar)):
+            stats[f"layer_{i}_weights_mean_mean"] = mu_w.mean().item()
+            stats[f"layer_{i}_weights_logvar_mean"] = logvar_w.mean().item()
+            stats[f"layer_{i}_weights_mean_std"] = mu_w.std().item()
+            stats[f"layer_{i}_weights_logvar_std"] = logvar_w.std().item()
+            stats[f"layer_{i}_bias_mean_mean"] = mu_b.mean().item()
+            stats[f"layer_{i}_bias_logvar_mean"] = logvar_b.mean().item()
+            stats[f"layer_{i}_bias_mean_std"] = mu_b.std().item()
+            stats[f"layer_{i}_bias_logvar_std"] = logvar_b.std().item()
+
+        return stats
