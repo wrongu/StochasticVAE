@@ -18,7 +18,6 @@ from torchviz import make_dot
 import os
 
 
-
 mlflow.set_experiment("SVAE")
 
 
@@ -35,7 +34,7 @@ def train(train_loader, model, optimizer, device, num_epochs):
     mlflow.log_param("Latent Space size", LATENT_DIM)
     mlflow.log_param("Number of layers", encoder_num_layers)
 
-    for epoch in tqdm(range(num_epochs), desc='Epochs'):
+    for epoch in tqdm(range(num_epochs), desc="Epochs"):
         total_loss = 0
 
         for batch_idx, (data, _) in enumerate(train_loader):
@@ -54,29 +53,31 @@ def train(train_loader, model, optimizer, device, num_epochs):
             mlflow.log_metric("Reconstruction log likelihood", reconstruction_loss, step=steps)
 
             for name, param in model.named_parameters():
-                if 'encoder' in name:
-                    if 'weight' in name:
+                if "encoder" in name:
+                    if "weight" in name:
                         mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
                         mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
-                    if 'bias' in name:
+                    if "bias" in name:
                         mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
                         mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
 
-        if epoch % 10 == 0:  
+        if epoch % 10 == 0:
             with torch.no_grad():
                 # reshape input and reconstructed images
                 original_images = data.view(-1, 1, 28, 28)  # (B, 1, 28, 28)
                 reconstructed_images = x_recon.view(-1, 1, 28, 28)  # (B, 1, 28, 28)
 
                 # Concatenate images side-by-side
-                comparison = torch.cat([original_images, reconstructed_images], dim=3)  # (B, 1, 28, 56)
+                comparison = torch.cat(
+                    [original_images, reconstructed_images], dim=3
+                )  # (B, 1, 28, 56)
                 grid = torchvision.utils.make_grid(comparison, nrow=8)
 
                 # Save the grid image
                 file_path = f"svae/output/reconstructed_images_epoch_{epoch}.png"
                 plt.figure(figsize=(10, 10))
-                plt.imshow(grid.permute(1, 2, 0).cpu().numpy(), cmap='gray')
-                plt.axis('off')
+                plt.imshow(grid.permute(1, 2, 0).cpu().numpy(), cmap="gray")
+                plt.axis("off")
                 plt.savefig(file_path)
 
                 # Log with MLflow
@@ -84,7 +85,7 @@ def train(train_loader, model, optimizer, device, num_epochs):
 
                 # Remove the file if desired
                 os.remove(file_path)
-        
+
         mlflow.log_metric("ELBO", -total_loss, step=epoch)
         # print("Epoch : " + str(epoch)+ " Loss: " + str(-total_loss))
 
@@ -93,16 +94,13 @@ def train(train_loader, model, optimizer, device, num_epochs):
     # combined_output = torch.stack((output_mean, output_logvar), dim=0)
     # make_dot(combined_output, params=dict(list(model.encoder.named_parameters()))).render("svae/computation_graph", format="png")
 
-
     return model
 
 
-
-def test(model:Stochastic_VAE):
+def test(model: Stochastic_VAE):
     model.cpu()
     model.eval()
     file_path = "svae/output/generated_output.png"
-
 
     n_samples = 100
     z = torch.randn((n_samples, LATENT_DIM))
@@ -111,12 +109,12 @@ def test(model:Stochastic_VAE):
         mu_x = model.decoder(z)
         eps = torch.randn(n_samples, 784)
         std_x = torch.exp(model.decoder.logvar_x / 2)
-        x = mu_x #+ std_x * eps
+        x = mu_x  # + std_x * eps
 
     grid_of_generated_xs = x.reshape(10, 10, 28, 28).permute(0, 2, 1, 3).reshape(280, 280)
     plt.figure(figsize=(10, 10))
-    plt.imshow(grid_of_generated_xs, cmap='Greys')
-    plt.axis('off')  
+    plt.imshow(grid_of_generated_xs, cmap="Greys")
+    plt.axis("off")
     plt.savefig(file_path)
 
     mlflow.log_artifact(file_path)
@@ -125,16 +123,25 @@ def test(model:Stochastic_VAE):
 
 
 def main():
-    dataset = datasets.MNIST(root='dataset/', train=True, transform = transforms.Compose([
-                                transforms.ToTensor()
-                                # transforms.Normalize((0.5,), (0.5,))
-                            ]), download=True)
-    train_loader = DataLoader(dataset=dataset, batch_size= BATCH_SIZE, shuffle=True)
+    dataset = datasets.MNIST(
+        root="dataset/",
+        train=True,
+        transform=transforms.Compose(
+            [
+                transforms.ToTensor()
+                # transforms.Normalize((0.5,), (0.5,))
+            ]
+        ),
+        download=True,
+    )
+    train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    svae = Stochastic_VAE(Stochastic_Recognition_NN(input_dim=784, z_dim=LATENT_DIM), 
-                          Stochastic_Density_NN(input_dim=784,z_dim=LATENT_DIM))
+    svae = Stochastic_VAE(
+        Stochastic_Recognition_NN(input_dim=784, z_dim=LATENT_DIM),
+        Stochastic_Density_NN(input_dim=784, z_dim=LATENT_DIM),
+    )
     optim_svae = torch.optim.Adam(svae.parameters(), lr=LEARNING_RATE)
-    run_name = 'SVAE'
+    run_name = "SVAE"
 
     with mlflow.start_run(run_name=run_name) as run:
         svae = train(train_loader, svae, optim_svae, DEVICE, EPOCHS)

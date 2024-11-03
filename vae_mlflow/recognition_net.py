@@ -3,8 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from training_config import H1_DIM, H2_DIM, H3_DIM, H4_DIM
 
-class RecognitionModel(nn.Module):
 
+class RecognitionModel(nn.Module):
 
     def __init__(self, latent_dim: int = 10):
         super(RecognitionModel, self).__init__()
@@ -18,11 +18,9 @@ class RecognitionModel(nn.Module):
         self.fc41 = nn.Linear(H4_DIM, latent_dim)
         self.fc42 = nn.Linear(H4_DIM, latent_dim)
 
-
     def kl(self, mu_z, logvar_z):
         """Calculate KL divergence between a diagonal gaussian and a standard normal."""
         return -0.5 * torch.sum(1 + logvar_z - mu_z.pow(2) - logvar_z.exp())
-
 
     def forward(self, x):
         h1 = self.fc1(x)
