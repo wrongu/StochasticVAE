@@ -2,4 +2,5 @@ myenv/
 mlruns/
 dataset/
 .vscode/
+.idea/
 svae/__pycache__/
