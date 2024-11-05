@@ -2,8 +2,8 @@ import torch
 from torch import nn
 from training_config import LATENT_DIM
 
-class VAE(nn.Module):
 
+class VAE(nn.Module):
 
     def __init__(self, encoder: nn.Module, decoder: nn.Module, beta: float = 1.0):
         super(VAE, self).__init__()
@@ -11,9 +11,7 @@ class VAE(nn.Module):
         self.decoder = decoder
         self.beta = beta
 
-
     def reparameterize(self, mu_z, logvar_z):
-
         """Sample from the approximate posterior using the reparameterization trick."""
 
         std = torch.exp(0.5 * logvar_z)
@@ -22,7 +20,6 @@ class VAE(nn.Module):
         z = mu_z + eps * std
 
         return z
-
 
     def loss(self, x):
 
@@ -35,23 +32,19 @@ class VAE(nn.Module):
 
         reconstruction_term = self.decoder.log_likelihood(x, x_recon).sum()
         # print(reconstruction_term.shape)
-        kl_term = self.encoder.kl(mu_z, logvar_z)                               #shape is []
+        kl_term = self.encoder.kl(mu_z, logvar_z)  # shape is []
         # elbo = reconstruction_term - kl_term
         loss = self.beta * kl_term - reconstruction_term
 
         return loss.sum(), x_recon, kl_term, reconstruction_term
-    
 
     def get_encoder_num_layers(self):
         num_layers = 0
         for name, param in self.encoder.named_parameters():
-            if 'weight' in name:
+            if "weight" in name:
                 num_layers += 1
 
         return num_layers
 
-
     def get_encoder_layer_width(self):
         pass
-
-

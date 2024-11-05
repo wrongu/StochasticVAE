@@ -12,7 +12,6 @@ class Stochastic_VAE(nn.Module):
         self.decoder = decoder
 
     def reparameterize(self, mu_z, logvar_z):
-
         """Sample from the approximate posterior using the reparameterization trick."""
 
         std = torch.exp(0.5 * logvar_z)
@@ -21,7 +20,6 @@ class Stochastic_VAE(nn.Module):
         z = mu_z + eps * std
 
         return z
-
 
     def loss(self, x):
         mu_z, logvar_z = self.encoder(x)
@@ -32,10 +30,8 @@ class Stochastic_VAE(nn.Module):
         x_recon = self.decoder(z)
 
         reconstruction_term = self.decoder.log_likelihood(x, x_recon).sum()
-        kl_term = self.encoder.kl(mu_z, logvar_z)                               #shape is []
+        kl_term = self.encoder.kl(mu_z, logvar_z)  # shape is []
         # elbo = reconstruction_term - kl_term
-        loss =  kl_term - reconstruction_term
+        loss = kl_term - reconstruction_term
 
         return loss.sum(), kl_term, reconstruction_term, x_recon
-    
-    

@@ -6,18 +6,17 @@ import torch.nn.functional as F
 
 class Stochastic_Density_NN(nn.Module):
 
-    def __init__(self, input_dim, z_dim, user_input_logvar = -2.5):
+    def __init__(self, input_dim, z_dim, user_input_logvar=-2.5):
         super(Stochastic_Density_NN, self).__init__()
-        
+
         self.fc5 = nn.Linear(LATENT_DIM, PLAN_DECODER[0])
-        self.fc6 = nn.Linear(PLAN_DECODER[0],PLAN_DECODER[1])
-        self.fc7 = nn.Linear(PLAN_DECODER[1],PLAN_DECODER[2])
-        self.fc8 = nn.Linear(PLAN_DECODER[2],PLAN_DECODER[3])
+        self.fc6 = nn.Linear(PLAN_DECODER[0], PLAN_DECODER[1])
+        self.fc7 = nn.Linear(PLAN_DECODER[1], PLAN_DECODER[2])
+        self.fc8 = nn.Linear(PLAN_DECODER[2], PLAN_DECODER[3])
         self.fc9 = nn.Linear(PLAN_DECODER[3], input_dim)
 
         # TIME BEING - Add a diagonal covariance in pixel space (Unnecessary; remove later)
         self.logvar_x = nn.Parameter(torch.zeros(input_dim))
-
 
     def reparameterization_trick(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
@@ -26,16 +25,13 @@ class Stochastic_Density_NN(nn.Module):
         z = mu + eps * std
 
         return z
-    
-    
-    def log_likelihood_gaussian(self, x, mu_z, logvar_z):
-      return -0.5 * (logvar_z + (x - mu_z)**2 / logvar_z.exp()).sum(dim=-1)
 
+    def log_likelihood_gaussian(self, x, mu_z, logvar_z):
+        return -0.5 * (logvar_z + (x - mu_z) ** 2 / logvar_z.exp()).sum(dim=-1)
 
     def log_likelihood(self, x, recon_x):
         """Calculate p( x|mu,Sigma) for a gaussian with diagonal covariance."""
         return self.log_likelihood_gaussian(x, recon_x, self.logvar_x)
-    
 
     def forward(self, z):
         h5 = F.relu(self.fc5(z))
@@ -47,4 +43,3 @@ class Stochastic_Density_NN(nn.Module):
         recon_x = torch.sigmoid(self.fc9(h8))
 
         return recon_x
-                

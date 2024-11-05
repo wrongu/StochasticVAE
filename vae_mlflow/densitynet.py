@@ -3,8 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from training_config import H1_DIM, H2_DIM, H3_DIM, H4_DIM, LATENT_DIM
 
-class DensityNet(nn.Module):
 
+class DensityNet(nn.Module):
 
     def __init__(self, latent_dim: int = 10, input_dim: int = 784):
         super(DensityNet, self).__init__()
@@ -19,15 +19,12 @@ class DensityNet(nn.Module):
         # Add a diagonal covariance in pixel space
         self.logvar_x = nn.Parameter(torch.zeros(input_dim))
 
-
     def log_likelihood_gaussian(self, x, mu_z, logvar_z):
-      return -0.5 * (logvar_z + (x - mu_z)**2 / logvar_z.exp()).sum(dim=-1)
-
+        return -0.5 * (logvar_z + (x - mu_z) ** 2 / logvar_z.exp()).sum(dim=-1)
 
     def log_likelihood(self, x, recon_x):
         """Calculate p( x|mu,Sigma) for a gaussian with diagonal covariance."""
         return self.log_likelihood_gaussian(x, recon_x, self.logvar_x)
-
 
     def forward(self, z):
         h5 = F.relu(self.fc5(z))

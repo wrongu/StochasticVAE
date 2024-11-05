@@ -21,7 +21,7 @@ def kth_nearest_neighbor_dist(x, k=1):
     # xxT = x @ x.t()
     xxT = torch.einsum("i...,j...->ij", x, x)
     sq_pair_dist = torch.diagonal(xxT, 0)[:, None] + torch.diagonal(xxT, 0)[None, :] - 2 * xxT
-    return torch.kthvalue(sq_pair_dist, k+1, dim=1).values ** 0.5
+    return torch.kthvalue(sq_pair_dist, k + 1, dim=1).values ** 0.5
 
 
 def entropy_singh_2003(p: Distribution, n: int, k: int):
@@ -43,11 +43,11 @@ def do_entropy_compare(p: Distribution, ns, ks):
     for i, n in enumerate(ns):
         h_mc[i] = entropy_monte_carlo(p, n)
         for j, k in enumerate(ks):
-            if k+1 > n:
+            if k + 1 > n:
                 h_singh[j][i] = np.nan, np.nan
             else:
                 h_singh[j][i] = entropy_singh_2003(p, n, k)
-                print("n: " + str(n)+ " k: " + str(k) + " Entropy: " + str(h_singh[j][i]))
+                print("n: " + str(n) + " k: " + str(k) + " Entropy: " + str(h_singh[j][i]))
                 print()
 
     return h_mc, h_singh
@@ -57,12 +57,12 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     torch.manual_seed(5)
-    
-    # multivariate distribution with mean 0 [2x2], covariance identity matrix [2x2] 
-    p1 = MultivariateNormal(torch.zeros(2), torch.eye(2))  
+
+    # multivariate distribution with mean 0 [2x2], covariance identity matrix [2x2]
+    p1 = MultivariateNormal(torch.zeros(2), torch.eye(2))
     p2 = MixtureSameFamily(
         Categorical(torch.tensor([0.5, 0.5, 0.5, 0.5])),
-        MultivariateNormal(torch.randn(4, 2), torch.stack([torch.eye(2)]*4, dim=0)),
+        MultivariateNormal(torch.randn(4, 2), torch.stack([torch.eye(2)] * 4, dim=0)),
     )
 
     ns = np.logspace(0, 4, 5).astype(int)
@@ -88,4 +88,4 @@ if __name__ == "__main__":
         ax[i].legend()
     fig.tight_layout()
 
-    plt.savefig('entropy_estimator/Entropy Plot')
+    plt.savefig("entropy_estimator/Entropy Plot")

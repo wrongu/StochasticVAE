@@ -1,0 +1,9 @@
+black
+matplotlib
+mlflow
+numpy
+pydot
+torch
+torchvision
+torchviz
+tqdm

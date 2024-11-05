@@ -30,7 +30,7 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
     mlflow.log_param("Latent Space size", LATENT_DIM)
     mlflow.log_param("Number of layers", encoder_num_layers)
 
-    for epoch in tqdm(range(num_epochs), desc='Epochs'):
+    for epoch in tqdm(range(num_epochs), desc="Epochs"):
         total_loss = 0
 
         for batch_idx, (data, _) in enumerate(train_loader):
@@ -49,11 +49,11 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
             mlflow.log_metric("Reconstruction log likelihood", reconstruction_loss, step=steps)
 
             for name, param in model.named_parameters():
-                if 'encoder' in name:
-                    if 'weight' in name:
+                if "encoder" in name:
+                    if "weight" in name:
                         mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
                         mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
-                    if 'bias' in name:
+                    if "bias" in name:
                         mlflow.log_metric(f"{name}_mean", param.data.mean().item(), step=steps)
                         mlflow.log_metric(f"{name}_std", param.data.std().item(), step=steps)
 
@@ -62,7 +62,7 @@ def train_model(train_loader, model, optimizer, device, num_epochs=NUM_EPOCHS):
     return model
 
 
-def test_VAE(test_loader, vae, device, num_examples = 3):
+def test_VAE(test_loader, vae, device, num_examples=3):
     vae = vae.to("cpu")
     vae.eval()
     images = []
@@ -83,23 +83,30 @@ def test_VAE(test_loader, vae, device, num_examples = 3):
 
             for i in range(num_examples):
                 z = vae.reparameterize(mu, sigma)
-                output  = vae.decoder(z)
+                output = vae.decoder(z)
                 output = output.view(-1, 1, 28, 28)
                 save_image(output, f"output/generated_{d}_ex_{i}.png")
 
 
 def main():
-    dataset = datasets.MNIST(root='dataset/', train=True, transform = transforms.Compose([
-    transforms.ToTensor()
-    # transforms.Normalize((0.5,), (0.5,))
-]), download=True)
-    train_loader = DataLoader(dataset=dataset, batch_size= BATCH_SIZE, shuffle=True)
+    dataset = datasets.MNIST(
+        root="dataset/",
+        train=True,
+        transform=transforms.Compose(
+            [
+                transforms.ToTensor()
+                # transforms.Normalize((0.5,), (0.5,))
+            ]
+        ),
+        download=True,
+    )
+    train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     vae = VAE(RecognitionModel(LATENT_DIM), DensityNet(LATENT_DIM))
     vae.parameters()  # [e.fc1, e.fc21, e.fc22, d.fc3, d.fc4, d.logvar]
 
     optim_vae = torch.optim.Adam(vae.parameters(), lr=LR_RATE)
-    run_name = 'VAE'
+    run_name = "VAE"
     with mlflow.start_run(run_name=run_name) as run:
 
         vae = train_model(train_loader, vae, optim_vae, DEVICE, NUM_EPOCHS)
