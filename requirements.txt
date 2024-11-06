@@ -1,6 +1,7 @@
 black
 matplotlib
 mlflow
+lightning
 numpy
 pydot
 torch
