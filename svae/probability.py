@@ -14,7 +14,7 @@ def kl_q_prior(mu_q, logvar_q, dim=-1):
 
 def log_det_fisher(mu_q, logvar_q, dim=-1):
     d = mu_q.size(dim)
-    return -2 * torch.sum(logvar_q, dim=dim) + torch.as_tensor(d) * torch.log(torch.as_tensor(2))
+    return -torch.sum(logvar_q, dim=dim) - torch.as_tensor(d) * torch.log(torch.as_tensor(2))
 
 
 def log_prob_diagonal_gaussian(x, mu, logvar, dim=-1):
