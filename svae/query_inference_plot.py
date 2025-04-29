@@ -88,8 +88,7 @@ def main():
     df = search_runs_by_params(
         experiment_name="LitSVAE_RDL",
         params={
-            "decoder_source": "37abd9dfafa647ecbdf484d76a04f169",
-            "epochs": 1000,
+            "decoder_source": "ba002b451919474c807c5ed52766eb93"
         },
         finished_only=True,
     )

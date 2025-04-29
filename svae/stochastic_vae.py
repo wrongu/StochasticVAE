@@ -28,7 +28,7 @@ class Stochastic_VAE(lit.LightningModule):
         decoder: nn.Module,
         k_neighbor: int = 1,
         n_forward: int = 4,
-        lr:float = 1e-5,
+        lr: float = 1e-5,
         lambda_: float = 2.0,
         ablate_entropy: bool = False,
         ablate_fim: bool = False,
