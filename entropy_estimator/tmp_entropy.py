@@ -59,10 +59,11 @@ if __name__ == "__main__":
     torch.manual_seed(5)
 
     # multivariate distribution with mean 0 [2x2], covariance identity matrix [2x2]
-    p1 = MultivariateNormal(torch.zeros(2), torch.eye(2))
+    d = 10
+    p1 = MultivariateNormal(torch.zeros(d), torch.eye(d))
     p2 = MixtureSameFamily(
         Categorical(torch.tensor([0.5, 0.5, 0.5, 0.5])),
-        MultivariateNormal(torch.randn(4, 2), torch.stack([torch.eye(2)] * 4, dim=0)),
+        MultivariateNormal(torch.randn(4, d), torch.stack([torch.eye(d)] * 4, dim=0)),
     )
 
     ns = np.logspace(0, 4, 5).astype(int)
@@ -88,4 +89,5 @@ if __name__ == "__main__":
         ax[i].legend()
     fig.tight_layout()
 
-    plt.savefig("entropy_estimator/Entropy Plot")
+    # plt.savefig("entropy_estimator/Entropy Plot")
+    plt.show()

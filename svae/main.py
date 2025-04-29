@@ -1,14 +1,14 @@
 import os
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Iterable
 
 import lightning as lit
 import mlflow
 import torch
 import torchvision.datasets as datasets
 from lightning.pytorch.loggers import MLFlowLogger
-from torch.utils.data import DataLoader
+from lightning.pytorch.callbacks import ModelCheckpoint
+from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
 
 from stochastic_density_network import Stochastic_Density_NN
@@ -19,7 +19,7 @@ from stochastic_vae import Stochastic_VAE
 torch.set_float32_matmul_precision("high")
 ENCODER_PLAN = [500, 300, 200, 100, 50]
 DECODER_PLAN = [50, 100, 300, 500]
-MLFLOW_TRACKING_URI = "/data/projects/SVAE/mlruns/"
+MLFLOW_TRACKING_URI = "file:///data/projects/SVAE/mlruns"
 MLFLOW_EXPERIMENT = "LitSVAE_RDL"
 DATA_ROOT = "/data/datasets/"
 
@@ -37,6 +37,7 @@ def main(
     ablate_fim: bool = False,
     load_model_from_run: str = None,
     init_encoder: bool = False,
+    test_on_synthetic_data: bool = False,
 ):
     ################
     ## Data setup ##
@@ -57,16 +58,6 @@ def main(
     )
     val_loader = DataLoader(
         dataset=val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=4,
-        pin_memory=True,
-    )
-    test_dataset = datasets.MNIST(
-        root=Path(DATA_ROOT) / "mnist", train=False, transform=transforms.ToTensor()
-    )
-    test_loader = DataLoader(
-        dataset=test_dataset,
         batch_size=batch_size,
         shuffle=False,
         num_workers=4,
@@ -109,6 +100,7 @@ def main(
         logger=logger,
         max_epochs=epochs,
         default_root_dir=logger.root_dir,  # TODO - double check that logger.root_dir is right
+        callbacks=ModelCheckpoint(monitor="val_loss", mode="min", save_top_k=1),
     )
 
     ############
@@ -130,19 +122,14 @@ def main(
             "ablate_entropy": ablate_entropy,
             "ablate_fim": ablate_fim,
             "decoder_source": load_model_from_run,
+            "init_encoder": init_encoder,
+            "test_on_synthetic_data": test_on_synthetic_data,
         }
     )
 
     # If specified, load decoder weights from a checkpoint and freeze it
     if load_model_from_run:
-        # TODO - programmatically load the *best* checkpoint from the run instead of hardcoding
-        #  the path
-        checkpoint = torch.load(
-            mlflow.artifacts.download_artifacts(
-                run_id=load_model_from_run,
-                artifact_path="model/checkpoints/epoch=99-step=20000/epoch=99-step=20000.ckpt",
-            )
-        )
+        checkpoint = torch.load(get_best_checkpoint_for_run(load_model_from_run))
 
         def _keep_param(param_name):
             return param_name.startswith("decoder") or (init_encoder and "logvar" not in param_name)
@@ -153,11 +140,62 @@ def main(
         for param in svae.decoder.parameters():
             param.requires_grad = False
 
+    sanity_check_params = {k: v.detach().clone() for k, v in svae.named_parameters()}
+
     # Do training
     trainer.fit(model=svae, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
+    if load_model_from_run:
+        # Assert that the decoder weights are unchanged and the encoder params are changed
+        for name, param in svae.named_parameters():
+            if name.startswith("decoder"):
+                assert torch.equal(
+                    param, sanity_check_params[name]
+                ), f"Decoder param {name} changed"
+            elif name.startswith("encoder"):
+                assert (not torch.equal(param, sanity_check_params[name])) or (
+                    not torch.any(torch.isfinite(param))
+                ), f"Encoder param {name} unchanged"
+            else:
+                raise ValueError(f"Unknown parameter name: {name}")
+
+    # (Maybe) generate a synthetic dataset using the model's decoder
+    if test_on_synthetic_data:
+        gen_x = svae.decoder.generate(n=10000, pixel_noise=True)
+        gen_labels = torch.randint(0, 10, (10000,))
+        test_dataset = TensorDataset(gen_x, gen_labels)
+    else:
+        test_dataset = datasets.MNIST(
+            root=Path(DATA_ROOT) / "mnist", train=False, transform=transforms.ToTensor()
+        )
+
+    test_loader = DataLoader(
+        dataset=test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+    )
+
+    # Before testing, re-load the best checkpoint from training
+    best_checkpoint = torch.load(get_best_checkpoint_for_run(logger.run_id))
+    svae.load_state_dict(best_checkpoint["state_dict"])
+
     # Do testing (including inference-goodness)
     trainer.test(model=svae, dataloaders=test_loader)
+
+
+def get_best_checkpoint_for_run(run_id: str):
+    checkpoints_dir = Path(mlflow.artifacts.download_artifacts(run_id=run_id))
+    for meta_file in checkpoints_dir.glob("**/aliases.txt"):
+        with open(meta_file, "r") as f:
+            aliases = f.read()
+        if "best" in aliases:
+            checkpoint_file = next(meta_file.parent.glob("*.ckpt"))
+            break
+    else:
+        raise FileNotFoundError("No best checkpoint file found in the specified run.")
+    return checkpoint_file
 
 
 if __name__ == "__main__":
@@ -174,6 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--ablate_fim", type=bool, default=False),
     parser.add_argument("--load_model_from_run", type=str, default=None),
     parser.add_argument("--init_encoder", action="store_true", default=False)
+    parser.add_argument("--test_on_synthetic_data", action="store_true", default=False)
     args = parser.parse_args()
 
     # Only let lightning 'see' one GPU, but can be overridden by setting the environment variable

@@ -160,15 +160,12 @@ class Stochastic_VAE(lit.LightningModule):
         mean = entropy_gap.mean()
         second_moment = (entropy_gap**2).mean()
 
-        return {
-            "moment1": mean,
-            "moment2": second_moment
-        }
+        return {"moment1": mean, "moment2": second_moment}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.5, patience=5, verbose=True, min_lr=self.lr / 32
+            optimizer, mode="min", factor=0.5, patience=5, min_lr=self.lr / 32
         )
         self.opt = optimizer
         self.sched = lr_scheduler
@@ -209,20 +206,8 @@ class Stochastic_VAE(lit.LightningModule):
             # Log parameter stats
             self.log_dict(self.encoder.params_stats())
 
-            # Log images
-            x_grid = make_grid(x.view(-1, 1, 28, 28), nrow=8)
-            recon_grid = make_grid(terms["reconstruction"].view(-1, 1, 28, 28), nrow=8)
-
-            with tempfile.TemporaryDirectory() as temp_dir:
-                input_image_path = os.path.join(temp_dir, "inputs.png")
-                recon_image_path = os.path.join(temp_dir, "reconstructions.png")
-                save_image(x_grid, input_image_path)
-                save_image(recon_grid, recon_image_path)
-
-                run_id = self.logger.run_id
-                self.logger.experiment.log_artifacts(
-                    local_dir=temp_dir, artifact_path="validation_images", run_id=run_id
-                )
+            self._log_image_grid("inputs.png", x, nrow=10)
+            self._log_image_grid("reconstructions.png", terms["reconstruction"], nrow=10)
 
         return terms["loss"]
 
@@ -246,14 +231,22 @@ class Stochastic_VAE(lit.LightningModule):
         self.log("goodness_moment2", terms["moment2"])
 
         # Log images generated from the prior
-        z = torch.randn(64, 1, self.encoder.d, device=self.device)
-        gen_images = self.decoder(z)
-        gen_img_grid = make_grid(gen_images.view(-1, 1, 28, 28), nrow=8)
+        gen_images = self.decoder.generate(100, pixel_noise=False)
+        self._log_image_grid("generated.png", gen_images, nrow=10)
+
+        gen_images_sampled = self.decoder.generate(100, pixel_noise=True)
+        self._log_image_grid("generated_noisy.png", gen_images, nrow=10)
+
+    def _log_image_grid(self, filename: str, images: torch.Tensor, nrow: int):
+        """
+        Log a grid of images to the logger.
+        """
+        grid = make_grid(images.view(-1, 1, 28, 28), nrow=nrow)
         with tempfile.TemporaryDirectory() as temp_dir:
-            gen_image_path = os.path.join(temp_dir, "generated_output.png")
-            save_image(gen_img_grid, gen_image_path)
+            image_path = os.path.join(temp_dir, filename)
+            save_image(grid, image_path)
 
             run_id = self.logger.run_id
             self.logger.experiment.log_artifacts(
-                local_dir=temp_dir, artifact_path="gen_images", run_id=run_id
+                local_dir=temp_dir, artifact_path="images", run_id=run_id
             )

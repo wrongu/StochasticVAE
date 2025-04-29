@@ -11,6 +11,7 @@ class Stochastic_Density_NN(nn.Module):
         super(Stochastic_Density_NN, self).__init__()
         plan_with_inputs_and_outputs = [latent_dim] + plan + [input_dim]
 
+        self.d = latent_dim
         self.layers = nn.ModuleList()
         for i in range(1, len(plan_with_inputs_and_outputs)):
             in_size = plan_with_inputs_and_outputs[i - 1]
@@ -31,3 +32,12 @@ class Stochastic_Density_NN(nn.Module):
         for layer in self.layers[:-1]:
             z = F.relu(layer(z))
         return torch.sigmoid(self.layers[-1](z))
+
+    @torch.no_grad()
+    def generate(self, n: int, pixel_noise: bool=True):
+        z = torch.randn(n, self.d, device=self.layers[0].weight.device)
+        recon_x = self.forward(z)
+        if pixel_noise:
+            return recon_x + torch.randn_like(recon_x) * torch.exp(self.logvar_x)
+        else:
+            return recon_x
