@@ -187,7 +187,7 @@ class Stochastic_VAE(lit.LightningModule):
         self.log("train_kl", terms["kl_term"])
         self.log("train_reconstruction", terms["reconstruction_term"])
         self.log("train_entropy", terms["entropy_term"])
-        self.log("train_fischer_information_matrix", terms["fim_term"])
+        self.log("train_fisher_information_matrix", terms["fim_term"])
 
         return terms["loss"]
 
@@ -198,7 +198,7 @@ class Stochastic_VAE(lit.LightningModule):
         self.log("val_kl", terms["kl_term"])
         self.log("val_reconstruction", terms["reconstruction_term"])
         self.log("val_entropy", terms["entropy_term"])
-        self.log("val_fischer_information_matrix", terms["fim_term"])
+        self.log("val_fisher_information_matrix", terms["fim_term"])
         self.log("val_multi_mu_z_mean", terms["avg_multi_mu_z"])
         self.log("val_multi_logvar_z_mean", terms["avg_multi_logvar_z"])
 
@@ -218,7 +218,7 @@ class Stochastic_VAE(lit.LightningModule):
         self.log("test_kl", terms["kl_term"])
         self.log("test_reconstruction", terms["reconstruction_term"])
         self.log("test_entropy", terms["entropy_term"])
-        self.log("test_fischer_information_matrix", terms["fim_term"])
+        self.log("test_fisher_information_matrix", terms["fim_term"])
         self.log("test_multi_mu_z_mean", terms["avg_multi_mu_z"])
         self.log("test_multi_logvar_z_mean", terms["avg_multi_logvar_z"])
 

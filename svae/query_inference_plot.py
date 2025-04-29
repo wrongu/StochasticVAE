@@ -64,7 +64,7 @@ def plot_loss_terms(plot_df):
     plot_df = plot_df.sort_values("params.lambda_")
 
     plot_df["ELBO"] = plot_df["metrics.val_reconstruction"] - plot_df["metrics.val_kl"]
-    plot_df["MI"] = plot_df["metrics.val_entropy"] + 1 / 2 * plot_df["metrics.val_fischer_information_matrix"]
+    plot_df["MI"] = plot_df["metrics.val_entropy"] + 1 / 2 * plot_df["metrics.val_fisher_information_matrix"]
 
     sns.barplot(plot_df, x="params.lambda_", y="ELBO", hue="params.user_input_logvar")
     plt.xlabel("Lambda")
