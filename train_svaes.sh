@@ -14,45 +14,38 @@ LAMBDAS=(
 )
 
 LEARNING_RATES=(
-  "1e-5"
+  "1e-3"
 )
 
 LOGVARS=(
-  "-10"
-)
-
-EXTRA_ARGS=(
-  ""
-  "--test_on_synthetic_data"
+  "-3"
 )
 
 DECODER_RUN="ba002b451919474c807c5ed52766eb93"
 
-for EXTRA in "${EXTRA_ARGS[@]}"; do
-  for LR in "${LEARNING_RATES[@]}"; do
-    # First, re-train one VAE with the frozen decoder (so it's maximally comparable with SVAE training)
-    echo "Training VAE with frozen decoder"
-        python svae/main.py \
-          --latent_dim=5 \
-          --lambda="inf" \
-          --epochs=300 \
-          --user_input_logvar="-inf" \
-          --learning_rate="$LR" \
-          --load_model_from_run="$DECODER_RUN" \
-          --init_encoder $EXTRA || exit 1
+for LR in "${LEARNING_RATES[@]}"; do
+  # First, re-train one VAE with the frozen decoder (so it's maximally comparable with SVAE training)
+  echo "Training VAE with frozen decoder"
+      python svae/main.py \
+        --latent_dim=5 \
+        --lambda="inf" \
+        --epochs=300 \
+        --user_input_logvar="-inf" \
+        --learning_rate="$LR" \
+        --load_model_from_run="$DECODER_RUN" \
+        --init_encoder || exit 1
 
-    for LOGVAR in "${LOGVARS[@]}"; do
-      for LAMBDA in "${LAMBDAS[@]}"; do
-        echo "Training SVAE with lambda $LAMBDA and logvar $LOGVAR"
-        python svae/main.py \
-          --latent_dim=5 \
-          --lambda="$LAMBDA" \
-          --epochs=300 \
-          --user_input_logvar="$LOGVAR" \
-          --learning_rate="$LR" \
-          --load_model_from_run="$DECODER_RUN" \
-          --init_encoder $EXTRA || exit 1
-      done
+  for LOGVAR in "${LOGVARS[@]}"; do
+    for LAMBDA in "${LAMBDAS[@]}"; do
+      echo "Training SVAE with lambda $LAMBDA and logvar $LOGVAR"
+      python svae/main.py \
+        --latent_dim=5 \
+        --lambda="$LAMBDA" \
+        --epochs=300 \
+        --user_input_logvar="$LOGVAR" \
+        --learning_rate="$LR" \
+        --load_model_from_run="$DECODER_RUN" \
+        --init_encoder || exit 1
     done
   done
 done
