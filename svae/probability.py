@@ -17,5 +17,9 @@ def log_det_fisher(mu_q, logvar_q, dim=-1):
     return -torch.sum(logvar_q, dim=dim) - torch.as_tensor(d) * torch.log(torch.as_tensor(2))
 
 
+def logvar_from_fisher(logdet_fim, d: int):
+    return -(logdet_fim + torch.as_tensor(d) * torch.log(torch.as_tensor(2))) / d
+
+
 def log_prob_diagonal_gaussian(x, mu, logvar, dim=-1):
     return -0.5 * (logvar + (x - mu) ** 2 / logvar.exp()).sum(dim=dim)

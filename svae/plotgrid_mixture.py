@@ -26,7 +26,7 @@ runs = search_runs_by_params(
     params={
         "latent_dim": 5,
         "decoder_source": "ba002b451919474c807c5ed52766eb93",
-        "test_on_synthetic_data": False,
+        "learning_rate": 1e-3,
     },
 )
 
@@ -66,7 +66,7 @@ test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=5, shuffle=Fa
 
 x, y = next(iter(test_loader))
 x = x.to("cuda")
-y = y.to("cuda")
+print("test classes:", *y)
 
 # %%
 
@@ -106,7 +106,7 @@ def plot_gauss_mixture_2d(mu, logvar, lim=3, resolution=500, ax=None, **kwargs):
     prob = torch.exp(log_prob - torch.logsumexp(log_prob, dim=0)).reshape(resolution, resolution)
 
     # Contour plot
-    ax.contour(z1.cpu(), z2.cpu(), prob.cpu(), levels=[prob.cpu().max()/2], **kwargs)
+    ax.contour(z1.cpu(), z2.cpu(), prob.cpu(), levels=[prob.cpu().max() / 2], **kwargs)
     ax.set_xlim(-lim, lim)
     ax.set_ylim(-lim, lim)
 
@@ -116,24 +116,28 @@ def plot_gauss_mixture_2d(mu, logvar, lim=3, resolution=500, ax=None, **kwargs):
 # plt.tight_layout()
 # plt.show()
 
-fig, ax = plt.subplots(4, 4, figsize=(12, 12))
-colors = plt.get_cmap("tab10")
-for i in range(4):
-    for j in range(4):
-        if i < j:
-            ax[i, j].remove()
-            continue
-        for s, (svae, mu_z, logvar_z) in enumerate(zip(svaes, mu_zs, logvar_zs)):
-            plot_gauss_mixture_2d(
-                mu_z[0, :, [j, i + 1]], logvar_z[0, :, [j, i + 1]], ax=ax[i, j], colors=colors(s)
-            )
-        ax[i, j].set_xlabel("$z_{}$".format(j + 1))
-        ax[i, j].set_ylabel("$z_{}$".format(i + 2))
-ax[0, 0].legend(
-    handles=[
-        Line2D([0], [0], color=colors(s), label=f"λ={svae.lambda_}") for s, svae in enumerate(svaes)
-    ],
-    loc="upper right",
-)
-plt.tight_layout()
-plt.show()
+for data_idx in range(len(x)):
+    fig, ax = plt.subplots(4, 4, figsize=(12, 12))
+    colors = plt.get_cmap("tab10")
+    for i in range(4):
+        for j in range(4):
+            if i < j:
+                ax[i, j].remove()
+                continue
+            for s, (svae, mu_z, logvar_z) in enumerate(zip(svaes, mu_zs, logvar_zs)):
+                plot_gauss_mixture_2d(
+                    mu_z[data_idx, :, [j, i + 1]],
+                    logvar_z[data_idx, :, [j, i + 1]],
+                    ax=ax[i, j],
+                    colors=colors(s),
+                )
+            ax[i, j].set_xlabel("$z_{}$".format(j + 1))
+            ax[i, j].set_ylabel("$z_{}$".format(i + 2))
+    ax[0, 0].legend(
+        handles=[
+            Line2D([0], [0], color=colors(s), label=f"λ={svae.lambda_}") for s, svae in enumerate(svaes)
+        ],
+        loc="upper right",
+    )
+    plt.tight_layout()
+    plt.show()
