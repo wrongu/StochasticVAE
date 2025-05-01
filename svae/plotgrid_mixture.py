@@ -27,6 +27,7 @@ runs = search_runs_by_params(
         "latent_dim": 5,
         "decoder_source": "ba002b451919474c807c5ed52766eb93",
         "learning_rate": 1e-3,
+        "epochs": 1000,
     },
 )
 

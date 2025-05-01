@@ -68,19 +68,64 @@ def plot_metric(plot_df, metric, human_readable_name, ylim=None):
     plt.show()
 
 
+def plot_model_info(runs):
+    # Make a new DF exploding out each weight/bias metric into its own row; this is the format
+    # seaborn wants
+    non_metric_columns = [c for c in runs.columns if not c.startswith("metrics.")]
+    df = runs.melt(id_vars=non_metric_columns, var_name="metric", value_name="value")
+
+    # Rename columns from params.PARAM_NAME to just param_name
+    df = df.rename(columns=lambda x: x.split(".")[-1].lower() if x.startswith("params.") else x)
+
+    # Remove the "metrics." prefix from the metric names
+    df["metric"] = df["metric"].str.replace("metrics.", "", regex=False)
+
+    # Metric names will be things like "layer_0_weights_mean_std". Break this into parts.
+    new_cols = df["metric"].str.extract(
+        r"layer_(?P<layer>\d+)_(?P<param>\w+)_(?P<statistic>\w+)_(?P<population>\w+)$", expand=True
+    )
+
+    # Add the new columns to the dataframe
+    df = pd.concat([df, new_cols], axis=1)
+
+    # Drop NaN values; this removes all rows that don't match the regex in the .extract() call above
+    df = df.dropna()
+
+    # Make layer numeric so seaborn sorts the x-axis correctly
+    df["layer"] = df["layer"].astype(int)
+
+    lambda_order = sorted(df["lambda_"].unique(), key=float)
+    for name, group in df.groupby("param"):
+        sns.lineplot(
+            group[(group["statistic"] == "logvar") & (group["population"] == "mean")],
+            x="layer",
+            y="value",
+            hue="lambda_",
+            hue_order = lambda_order,
+            palette="crest",
+        )
+        plt.ylabel(f"SNN {name} log variance")
+        plt.tight_layout()
+        plt.show()
+
+
+
 def main():
     mlflow.set_tracking_uri("/data/projects/SVAE/mlruns")
     df = search_runs_by_params(
         experiment_name="LitSVAE_RDL",
         params={
+            "latent_dim": 5,
             "decoder_source": "ba002b451919474c807c5ed52766eb93",
             "learning_rate": 1e-3,
+            "epochs": 1000,
         },
         finished_only=True,
     )
     df["lambda_f"] = df["params.lambda_"].astype(float)
     df = df.sort_values("lambda_f")
 
+    plot_model_info(df)
     plot_inference_goodness(df)
     plot_metric(
         df,
@@ -91,6 +136,7 @@ def main():
     plot_metric(df, "metrics.test_kl", "Average KL(q(z|x)||p(z))")
     plot_metric(df[~np.isinf(df["lambda_f"])], "metrics.test_fisher_information_matrix", "FIM term")
     plot_metric(df[~np.isinf(df["lambda_f"])], "metrics.test_entropy", "Entropy term")
+
 
 
 if __name__ == "__main__":

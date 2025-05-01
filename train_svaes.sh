@@ -29,7 +29,7 @@ for LR in "${LEARNING_RATES[@]}"; do
       python svae/main.py \
         --latent_dim=5 \
         --lambda="inf" \
-        --epochs=300 \
+        --epochs=1000 \
         --user_input_logvar="-inf" \
         --learning_rate="$LR" \
         --load_model_from_run="$DECODER_RUN" \
@@ -41,7 +41,7 @@ for LR in "${LEARNING_RATES[@]}"; do
       python svae/main.py \
         --latent_dim=5 \
         --lambda="$LAMBDA" \
-        --epochs=300 \
+        --epochs=1000 \
         --user_input_logvar="$LOGVAR" \
         --learning_rate="$LR" \
         --load_model_from_run="$DECODER_RUN" \
