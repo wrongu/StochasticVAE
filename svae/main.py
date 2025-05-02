@@ -11,7 +11,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
 
-from stochastic_density_network import Stochastic_Density_NN
+from stochastic_density_network import Stochastic_Density_NN, PixelCovariance
 from stochastic_recognition_model import Stochastic_Recognition_NN
 from stochastic_vae import Stochastic_VAE
 
@@ -38,6 +38,7 @@ def main(
     load_model_from_run: str = None,
     init_encoder: bool = False,
     test_on_synthetic_data: bool = False,
+    decoder_pixel_covariance: PixelCovariance = PixelCovariance.DIAGONAL,
 ):
     ################
     ## Data setup ##
@@ -79,6 +80,7 @@ def main(
             input_dim=784,
             latent_dim=latent_dim,
             plan=DECODER_PLAN,
+            pixel_covariance=decoder_pixel_covariance,
         ),
         lambda_=lambda_,
         lr=learning_rate,
@@ -124,6 +126,7 @@ def main(
             "decoder_source": load_model_from_run,
             "init_encoder": init_encoder,
             "test_on_synthetic_data": test_on_synthetic_data,
+            "decoder_pixel_covariance": decoder_pixel_covariance,
         }
     )
 
@@ -213,6 +216,12 @@ if __name__ == "__main__":
     parser.add_argument("--load_model_from_run", type=str, default=None),
     parser.add_argument("--init_encoder", action="store_true", default=False)
     parser.add_argument("--test_on_synthetic_data", action="store_true", default=False)
+    parser.add_argument(
+        "--decoder_pixel_covariance",
+        type=lambda s: PixelCovariance[s],
+        default=PixelCovariance.DIAGONAL,
+        choices=list(PixelCovariance),
+    )
     args = parser.parse_args()
 
     # Only let lightning 'see' one GPU, but can be overridden by setting the environment variable

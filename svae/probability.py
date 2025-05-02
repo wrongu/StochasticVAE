@@ -1,7 +1,14 @@
+from typing import Optional
+
 import torch
 
 
-def reparameterization_trick(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+def reparameterization_trick(
+    mu: torch.Tensor, logvar: torch.Tensor, n_samples: Optional[int] = None, stack_dim: int = 1
+) -> torch.Tensor:
+    if n_samples is not None:
+        mu = torch.stack([mu] * n_samples, dim=stack_dim)
+        logvar = torch.stack([logvar] * n_samples, dim=stack_dim)
     std = torch.exp(0.5 * logvar)
     eps = torch.randn_like(std)
     return mu + eps * std

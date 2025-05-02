@@ -21,7 +21,7 @@ LOGVARS=(
   "-3"
 )
 
-DECODER_RUN="ba002b451919474c807c5ed52766eb93"
+DECODER_RUN="aee20ec5d660489eae8f5c85832362ed"
 
 for LR in "${LEARNING_RATES[@]}"; do
   # First, re-train one VAE with the frozen decoder (so it's maximally comparable with SVAE training)
@@ -33,6 +33,7 @@ for LR in "${LEARNING_RATES[@]}"; do
         --user_input_logvar="-inf" \
         --learning_rate="$LR" \
         --load_model_from_run="$DECODER_RUN" \
+        --decoder_pixel_covariance=ISOTROPIC \
         --init_encoder || exit 1
 
   for LOGVAR in "${LOGVARS[@]}"; do
@@ -45,6 +46,7 @@ for LR in "${LEARNING_RATES[@]}"; do
         --user_input_logvar="$LOGVAR" \
         --learning_rate="$LR" \
         --load_model_from_run="$DECODER_RUN" \
+        --decoder_pixel_covariance=ISOTROPIC \
         --init_encoder || exit 1
     done
   done

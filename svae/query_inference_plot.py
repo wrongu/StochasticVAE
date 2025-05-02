@@ -10,6 +10,7 @@ from nn_lib.utils import search_runs_by_params
 from torchvision import datasets, transforms
 
 from main import DATA_ROOT
+from stochastic_density_network import PixelCovariance
 
 client = MlflowClient()
 
@@ -116,8 +117,9 @@ def main():
         experiment_name="LitSVAE_RDL",
         params={
             "latent_dim": 5,
-            "decoder_source": "ba002b451919474c807c5ed52766eb93",
+            "decoder_source": "aee20ec5d660489eae8f5c85832362ed",
             "learning_rate": 1e-3,
+            "decoder_pixel_covariance": str(PixelCovariance.ISOTROPIC),
             "epochs": 1000,
         },
         finished_only=True,
